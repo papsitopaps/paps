@@ -344,3 +344,11 @@ label.row { cursor: pointer; }
 .plan .btn[disabled] { opacity: .7; cursor: default; }
 .timeline li.night::before { border-color: var(--mid); }
 .night-tag { font-size: .75rem; font-weight: 700; color: var(--mid); white-space: nowrap; }
+
+/* Recipe library & method */
+.library { display: grid; gap: 12px; }
+.recipe h3 { margin: 0 0 4px; font-size: 1.2rem; }
+.recipe .eyebrow { margin-bottom: 4px; color: var(--accent); }
+.recipe ol, .method ol { padding-left: 20px; margin: 8px 0 0; display: grid; gap: 6px; }
+.recipe .btn { margin-top: 12px; }
+.method .btn { margin-top: 10px; }

@@ -62,15 +62,21 @@ A sourdough baker can also set the levain % by hand (*Set levain by hand*). The 
 ## 5. Pre-ferments
 
 - **Poolish:** a share *p* of the flour, at 100% water. Its yeast (% of poolish flour) is `1.5 · (3 / hours)^1.95`, which gives about 1.5% at 3 h and about 0.1% at 12 h.
-- **Biga:** a share *p* of the flour, at 45% water (adjustable), with 1% fresh yeast.
+- **Biga:** a share *p* of the flour, at 45% water (adjustable up to 65%). Its yeast is set by the baker as a % of the biga flour, in the chosen yeast type (default 1% fresh yeast or the equivalent). Biga time and temperature are recorded for the timeline and planner.
 - **Main-dough yeast** is reduced to (1 − p) of the model amount.
 
-## 6. Old dough
+## 6. Yeast set by hand
+
+**Set yeast by hand** fixes the main-dough yeast as a % of total flour, in the chosen type, for recipes that give an exact amount.
+The app then shows how many room-temperature hours that yeast supports (the inverse of the yeast model).
+It warns when that differs from your schedule by more than 2.5×.
+
+## 7. Old dough
 
 - **Old dough in:** this many % of *F*, assumed to have the same water and salt. Its flour, water and salt are subtracted from the main dough.
 - **Old dough out:** the batch is scaled up by this many % to keep a piece for next time.
 
-## 7. Sourdough lab
+## 8. Sourdough lab
 
 | Tool | Formula |
 |---|---|
@@ -80,7 +86,7 @@ A sourdough baker can also set the levain % by hand (*Set levain by hand*). The 
 | Aliquot target | `75% − 9 pts per °C above 21 °C`, clamped 25–100% |
 | Starter hydration | add water to raise it, or flour to lower it |
 
-## 8. Tools
+## 9. Tools
 
 | Tool | Formula |
 |---|---|

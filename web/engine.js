@@ -74,9 +74,12 @@ export function computeDough(r, s) {
   // Pre-ferment (poolish wins if both are switched on).
   let pf = null;
   if (s.poolish && r.poolishPct > 0) pf = { kind: 'poolish', share: r.poolishPct / 100, hyd: 1, yeastCy: poolishYeastPct(r.poolishHours) / 100 };
-  else if (s.biga && r.bigaPct > 0) pf = { kind: 'biga', share: r.bigaPct / 100, hyd: r.bigaHydration / 100, yeastCy: 0.01 };
+  else if (s.biga && r.bigaPct > 0) pf = { kind: 'biga', share: r.bigaPct / 100, hyd: r.bigaHydration / 100 };
   const mainShare = pf ? 1 - pf.share : 1;
   const pfFactor = lv.sourdough ? 1 : lv.factor; // pre-ferments use commercial yeast (fresh if sourdough is selected)
+  // Pre-ferment yeast as a fraction of its own flour, in the yeast type used for it.
+  // Biga: set by the baker (default 1% fresh-yeast equivalent). Poolish: from its time.
+  if (pf) pf.yeast = pf.kind === 'biga' ? (r.bigaYeastPct ?? pfFactor) / 100 : pf.yeastCy * pfFactor;
 
   // Levain as % of total flour: either derived from the yeast model or set by hand.
   let levainPct = 0, starterHyd = 0;
@@ -84,8 +87,10 @@ export function computeDough(r, s) {
     starterHyd = (r.starterHydration ?? lv.hydration) / 100;
     levainPct = r.levainManual ? r.levainPct / 100 : cy * lv.factor * mainShare;
   }
-  const yeastFrac = lv.sourdough ? 0 : cy * lv.factor * mainShare;
-  const pfYeastFrac = pf ? pf.yeastCy * pfFactor * pf.share : 0;
+  // Commercial yeast in the main dough: from the model, or set by hand as % of total flour.
+  const yeastManual = !lv.sourdough && r.yeastManual;
+  const yeastFrac = lv.sourdough ? 0 : yeastManual ? r.yeastPct / 100 : cy * lv.factor * mainShare;
+  const pfYeastFrac = pf ? pf.yeast * pf.share : 0;
 
   // Flour + water carried by levain are already part of h, so the levain adds no extra mass.
   const flourTotal = dough / (1 + h + sl + ft + sg + yeastFrac + pfYeastFrac);
@@ -107,10 +112,14 @@ export function computeDough(r, s) {
   let pre = null;
   if (pf) {
     const f = pf.share * flourTotal;
-    pre = { kind: pf.kind, flour: f, water: f * pf.hyd, yeast: f * pf.yeastCy * pfFactor, yeastType: lv.sourdough ? 'CY' : r.yeastType, hours: pf.kind === 'poolish' ? r.poolishHours : null };
+    pre = {
+      kind: pf.kind, flour: f, water: f * pf.hyd, yeast: f * pf.yeast, yeastPct: pf.yeast * 100,
+      yeastType: lv.sourdough ? 'CY' : r.yeastType,
+      hours: pf.kind === 'poolish' ? r.poolishHours : (r.bigaHours ?? 16), temp: pf.kind === 'biga' ? (r.bigaTemp ?? 18) : null,
+    };
     pre.total = pre.flour + pre.water + pre.yeast;
     if (pf.kind === 'poolish' && r.poolishHours > 12) warnings.push('Poolish over 12 h: use a strong flour (W > 300).');
-    if (pf.kind === 'biga') warnings.push('Biga needs a strong flour (W > 350).');
+    if (pf.kind === 'biga') warnings.push('Use a strong flour (about W 320 or more) for the biga.');
   }
 
   const flour = flourTotal - (pre?.flour || 0) - (levain?.flour || 0) - (od?.flour || 0);
@@ -127,6 +136,12 @@ export function computeDough(r, s) {
   const pctSum = blend.reduce((a, f) => a + Number(f.pct), 0);
   if (Math.abs(pctSum - 100) > 0.01) warnings.push(`The flour blend adds up to ${pctSum}%, not 100%.`);
 
+  // Hours of room-temperature fermentation that hand-set yeast supports.
+  let yeastHours = null;
+  if (yeastManual && r.yeastPct > 0) {
+    yeastHours = hoursForYeast({ hydration: r.hydration, salt: r.salt, fat: ft * 100, cyPct: (r.yeastPct / lv.factor) / mainShare, temp: r.rtTemp });
+  }
+
   // Sourdough: estimated hours the chosen levain supports (handy when set by hand).
   let levainHours = null;
   if (lv.sourdough && levainPct > 0) {
@@ -136,7 +151,7 @@ export function computeDough(r, s) {
   return {
     dough, pieces, flourTotal, flour, flours, water, salt, fat, sugar, yeast,
     yeastType: r.yeastType, yeastPctCY: cyPct, hours,
-    preferment: pre, levain, levainHours, oldDough: od,
+    preferment: pre, levain, levainHours, yeastHours, yeastManual, oldDough: od,
     oldDoughOut: s.oldDoughOut ? dough - dough / (1 + odOut) : 0,
     warnings,
   };
