@@ -52,3 +52,9 @@ test('flour strength target grows with fermentation time', () => {
   const weak = leopardReport({ ...contemporary, flourW: 220, ctHours: 60 }, ctx);
   assert.equal(weak.items.find(i => i.id === 'flour').status, 'bad');
 });
+
+test('a long room-temperature-only ferment is not rated as good as a cold one', () => {
+  const warm = leopardReport({ ...contemporary, rt1Hours: 21, ctHours: 0, rt2Hours: 3 }, { ...ctx, cold: false });
+  assert.equal(warm.items.find(i => i.id === 'time').status, 'ok');
+  assert.ok(warm.score < leopardReport(contemporary, ctx).score);
+});

@@ -20,10 +20,11 @@ How the numbers are worked out is in [`docs/formulas.md`](docs/formulas.md) and 
 - **Leaveners:** fresh, active dry and instant yeast, plus firm and liquid sourdough with adjustable starter hydration.
   - Levain can be set automatically or by hand, and then shows the hours it supports.
 - **Pre-ferments and old dough:** poolish, biga, and old dough in or out.
-- **Bake planner:** pick a bake time and get the start time of each step.
+- **Bake planner:** enter when you can start and when you want to bake. Impasto suggests plans that fit (long cold ferment, room temperature only, or rushed). Each shows the time split, yeast amount, leoparding score and a clock-time timeline with night steps flagged. One tap applies a plan. See [`docs/planner.md`](docs/planner.md).
 - **Sourdough lab:** levain build (ratio, hydration, time to peak), bulk fermentation estimate with aliquot-jar target, and starter hydration converter.
 - **Tools:** yeast converter, dough weight for a pan, and water temperature for a target dough temperature.
-- **Recipes:** save, open and share as a link.
+- **Recipes:** save, open and share as a link. A **Recipe library** has proven recipes (contemporary Neapolitan with 50% biga, focaccia with 50% biga) with their method. One tap loads them.
+- **Biga and yeast control:** biga yeast %, time and temperature, and **Set yeast by hand** for recipes that give exact yeast amounts.
 - **Made for high-temperature pizza ovens:** the default is a gas pizza oven reaching about 500 °C (such as an Ooni Koda or a Gozney Roccbox or Dome). Wood or pellet, electric and home-oven presets are also available. Each preset sets the stone temperature, bake time and technique tips.
 - **Leoparding coach:** scores Neapolitan and Contemporary recipes and bake setups for leopard spotting, lists the biggest fixes, and adds technique tips. See [`docs/leoparding.md`](docs/leoparding.md).
 - **Hydration advisor:** suggests a hydration from your oven temperature, kitchen temperature, flour strength and fermentation time, starting from the AVPN guideline.

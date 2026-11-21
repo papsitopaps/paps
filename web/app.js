@@ -5,6 +5,8 @@ import {
 import { leopardReport, recommendHydration, LEOPARD_TECHNIQUE } from './leopard.js';
 import { listBakes, getBake, putBake, deleteBake, importBakes, newId, shrinkPhoto } from './bakelog.js';
 import { GLOSSARY } from './glossary.js';
+import { recommendPlans, atNight } from './planner.js';
+import { LIBRARY } from './recipes.js';
 
 const VERSION = '1.1';
 const STORE_KEY = 'impasto:v1';
@@ -17,7 +19,8 @@ const BASE = {
   rt1Hours: 8, rt2Hours: 0, ctHours: 24, ctTemp: 4, rtTemp: 20,
   yeastType: 'CY', starterHydration: 100, levainManual: false, levainPct: 20,
   flours: [{ name: 'Flour 1', pct: 100 }, { name: 'Flour 2', pct: 0 }, { name: 'Flour 3', pct: 0 }],
-  bigaPct: 50, bigaHydration: 45, poolishPct: 30, poolishHours: 12,
+  bigaPct: 50, bigaHydration: 45, bigaYeastPct: null, bigaHours: 18, bigaTemp: 18, poolishPct: 30, poolishHours: 12,
+  yeastManual: false, yeastPct: 0.3, method: null, source: null, recipeName: null,
   oldDoughIn: 10, oldDoughOut: 10,
   ovenTemp: 450, bakeSeconds: 80, flourW: 280,
 };
@@ -123,7 +126,7 @@ function leopardFor(r = R(), st = ST(), s = S()) {
   if (!st.pizza) return null;
   const x = calcInput(r, st, s);
   return leopardReport(x, {
-    contemporary: !!st.contemporary, cold: coldOn(st, s), rt2Counts: !st.rt2OnlyWithCold,
+    contemporary: !!st.contemporary, cold: coldOn(st, s) && r.ctHours > 0, rt2Counts: !st.rt2OnlyWithCold,
     fats: s.fats || st.forceFat, sugar: s.sugar,
     preferment: s.poolish ? 'poolish' : s.biga ? 'biga' : null,
   });
@@ -209,6 +212,10 @@ function fieldDefs() {
   if (st.rt2 && (!st.rt2OnlyWithCold || cold)) out.push({ key: 'rt2Hours', label: st.rt2, step: 0.5, min: 0, max: 24, fmt: v => `${v} h` });
 
   out.push({ sub: 'Leavening' }, { yeast: true });
+  if (!lv.sourdough) {
+    out.push({ toggle: 'yeastManual', label: 'Set yeast by hand' });
+    if (r.yeastManual) out.push({ key: 'yeastPct', label: `Yeast · % of flour (${lv.short})`, step: 0.05, min: 0.01, max: 5, fmt: v => `${round(v, 2)}%` });
+  }
   if (lv.sourdough) {
     out.push({ key: 'starterHydration', label: 'Starter hydration', step: 5, min: 40, max: 200, fmt: v => `${v}%` });
     out.push({ toggle: 'levainManual', label: 'Set levain by hand' });
@@ -225,14 +232,19 @@ function fieldDefs() {
     for (let i = 0; i < s.floursCount; i++) out.push({ flour: i });
   }
   if (s.poolish) out.push({ sub: 'Poolish' }, { key: 'poolishPct', label: 'Flour in poolish', step: 5, min: 5, max: 100, fmt: v => `${v}%` }, { key: 'poolishHours', label: 'Poolish time', step: 1, min: 2, max: 24, fmt: v => `${v} h` });
-  else if (s.biga) out.push({ sub: 'Biga' }, { key: 'bigaPct', label: 'Flour in biga', step: 5, min: 5, max: 100, fmt: v => `${v}%` }, { key: 'bigaHydration', label: 'Biga water', step: 1, min: 40, max: 60, fmt: v => `${v}%` });
+  else if (s.biga) {
+    const by = lv.sourdough ? 'CY' : lv.short;
+    out.push({ sub: 'Biga' }, { key: 'bigaPct', label: 'Flour in biga', step: 5, min: 5, max: 100, fmt: v => `${v}%` }, { key: 'bigaHydration', label: 'Biga water', step: 1, min: 40, max: 65, fmt: v => `${v}%` },
+      { key: 'bigaYeastPct', label: `Biga yeast · % of its flour (${by})`, step: 0.05, min: 0.01, max: 3, fmt: v => `${round(v, 2)}%`, auto: () => round(lv.sourdough ? 1 : lv.factor, 2) },
+      { key: 'bigaHours', label: 'Biga time', step: 1, min: 6, max: 72, fmt: v => `${v} h` }, temp('bigaTemp', 'Biga temp', 1, 25));
+  }
   if (s.oldDoughIn || s.oldDoughOut) out.push({ sub: 'Old dough' });
   if (s.oldDoughIn) out.push({ key: 'oldDoughIn', label: 'Old dough in', step: 1, min: 1, max: 50, fmt: v => `${v}%` });
   if (s.oldDoughOut) out.push({ key: 'oldDoughOut', label: 'Keep for next time', step: 1, min: 1, max: 50, fmt: v => `${v}%` });
   return out;
 }
 
-function valueOf(def) { const v = R()[def.key]; return def.temp ? Math.round(toDisp(v)) : v; }
+function valueOf(def) { const v = R()[def.key] ?? (def.auto ? def.auto() : 0); return def.temp ? Math.round(toDisp(v)) : v; }
 
 function tileHTML(d) {
   const v = valueOf(d);
@@ -340,14 +352,15 @@ function renderResults() {
     <div class="actions"><button class="btn primary" data-act="log-new">Log this bake</button><button class="btn" data-act="save">Save recipe</button><button class="btn" data-act="share">Share</button></div>
   </section>`;
 
+  html += plannerHTML(out);
   const rep = leopardFor();
   if (rep) html += leopardCardHTML(rep);
 
   if (out.preferment) {
     const p = out.preferment;
-    html += `<section class="card"><h3>${p.kind === 'poolish' ? 'Poolish' : 'Biga'} · make first${p.hours ? `, ${p.hours} h ahead` : ''}</h3><table>
+    html += `<section class="card"><h3>${p.kind === 'poolish' ? 'Poolish' : 'Biga'} · make first, ${fmtHours(p.hours)} ahead${p.temp != null ? ` at ${tempStr(p.temp)}` : ''}</h3><table>
       <tr><td>Flour</td><td>${grams(p.flour)}</td></tr><tr><td>Water</td><td>${grams(p.water)}</td></tr>
-      <tr><td>Yeast (${p.yeastType})</td><td>${grams(p.yeast)}</td></tr><tr><td>Total</td><td>${grams(p.total)}</td></tr></table>
+      <tr><td>Yeast (${p.yeastType}, ${round(p.yeastPct, 2)}%)</td><td>${grams(p.yeast)}</td></tr><tr><td>Total</td><td>${grams(p.total)}</td></tr></table>
       <p class="note">Mix all of it into the main dough.</p></section>`;
   }
   if (out.levain) {
@@ -362,40 +375,101 @@ function renderResults() {
     <tr><td>Total flour</td><td>${grams(out.flourTotal)}</td></tr>
     <tr><td>Total water</td><td>${grams(out.flourTotal * r.hydration / 100)}</td></tr>
     <tr><td>Fermentation, as hours at room temp</td><td>${fmtHours(out.hours)}</td></tr>
-    <tr><td>Fresh-yeast equivalent</td><td>${round(out.yeastPctCY, 3)}%</td></tr>
+    ${out.yeastManual ? `<tr><td>Yeast set by hand supports</td><td>≈ ${fmtHours(out.yeastHours)} at room temp</td></tr>` : `<tr><td>Fresh-yeast equivalent</td><td>${round(out.yeastPctCY, 3)}%</td></tr>`}
     ${out.oldDoughOut ? `<tr><td>Set aside for next batch</td><td>${grams(out.oldDoughOut)}</td></tr>` : ''}
     ${s.wastage ? `<tr><td>Wastage allowance</td><td>${s.wastage}%</td></tr>` : ''}
-    </table>${out.warnings.map(w => `<p class="warn">${esc(w)}</p>`).join('')}</section>`;
-  html += scheduleHTML(out);
+    </table>${out.yeastManual && out.yeastHours && (out.yeastHours > out.hours * 2.5 || out.yeastHours < out.hours / 2.5)
+      ? `<p class="warn">Your schedule is about ${fmtHours(out.hours)} at room temp, but this much yeast suits about ${fmtHours(out.yeastHours)}. Watch the dough rather than the clock.</p>` : ''}
+    ${out.warnings.map(w => `<p class="warn">${esc(w)}</p>`).join('')}</section>`;
+  if (r.method) html += `<section class="card method"><h3>Method${r.recipeName ? ` · ${esc(r.recipeName)}` : ''}</h3><ol>${r.method.map(m => `<li>${esc(m)}</li>`).join('')}</ol>
+    ${r.source ? `<p class="note">${esc(r.source)}</p>` : ''}<button class="btn" data-act="clear-method">Hide method</button></section>`;
   $('#results').innerHTML = html;
 }
 
-// ---------- Schedule ----------
-let bakeAt = null;
+// ---------- Schedule & bake planner ----------
+const PL = () => (state.planner ||= { bakeAt: null, startAt: null });
 function scheduleSteps(out, r = R(), st = ST(), s = S()) {
   const steps = [];
   if (out.levain) steps.push(['Build levain', starterPeakHours({ ratio: [1, 2, 2], temp: r.rtTemp })]);
-  if (out.preferment) steps.push([`Mix ${out.preferment.kind}`, out.preferment.kind === 'poolish' ? r.poolishHours : 16]);
+  if (out.preferment) steps.push([`Mix ${out.preferment.kind}${out.preferment.temp != null ? ` (keep at ${tempStr(out.preferment.temp)})` : ''}`, out.preferment.hours]);
   steps.push([`Mix dough · ${st.rt1}`, r.rt1Hours]);
-  if (coldOn(st, s)) steps.push(['Into the fridge', r.ctHours]);
+  if (coldOn(st, s) && r.ctHours > 0) steps.push(['Into the fridge', r.ctHours]);
   const x = calcInput(r, st, s);
   if (x.rt2Hours > 0) steps.push([st.rt2, x.rt2Hours]);
   steps.push(['Bake', 0]);
   return steps;
 }
-function scheduleHTML(out) {
-  const steps = scheduleSteps(out);
-  const total = steps.reduce((a, [, h]) => a + h, 0);
-  let t = bakeAt ? new Date(bakeAt - total * 3600e3) : null;
-  const fmt = d => d.toLocaleString([], { weekday: 'short', hour: '2-digit', minute: '2-digit' });
-  const rows = steps.map(([name, h]) => {
-    const cell = t ? fmt(t) : '';
+const fmtWhen = d => d.toLocaleString([], { weekday: 'short', hour: '2-digit', minute: '2-digit' });
+function timelineHTML(steps, startMs) {
+  let t = startMs != null ? new Date(startMs) : null;
+  return `<ol class="timeline${t ? ' timed' : ''}">${steps.map(([name, h]) => {
+    const night = t && h !== undefined && atNight(t) && name !== 'Bake';
+    const cell = t ? `<span class="when">${fmtWhen(t)}</span>` : '<span class="when"></span>';
     if (t) t = new Date(t.getTime() + h * 3600e3);
-    return `<li><span class="when">${cell}</span><span>${esc(name)}${h ? ` <span class="muted">${fmtHours(h)}</span>` : ''}</span></li>`;
+    return `<li${night ? ' class="night"' : ''}>${cell}<span>${esc(name)}${h ? ` <span class="muted">${fmtHours(h)}</span>` : ''}${night ? ' <span class="night-tag">at night</span>' : ''}</span></li>`;
+  }).join('')}</ol>`;
+}
+function planVariant(plan) {
+  const st = ST();
+  const r = { ...R(), rt1Hours: plan.rt1Hours, ctHours: plan.ctHours, rt2Hours: plan.rt2Hours };
+  const s = { ...S(), ct: st.forceCold ? S().ct : plan.ctHours > 0 };
+  return { r, s, out: computeDough(calcInput(r, st, s), s) };
+}
+function leadHours(out, r = R()) {
+  if (out.levain) return starterPeakHours({ ratio: [1, 2, 2], temp: r.rtTemp });
+  if (out.preferment) return out.preferment.hours;
+  return 0;
+}
+function quickTimes() {
+  const at = (days, h, m) => { const d = new Date(); d.setDate(d.getDate() + days); d.setHours(h, m, 0, 0); return d; };
+  const list = [];
+  const tonight = at(0, 19, 30);
+  if (tonight - Date.now() > 4 * 3600e3) list.push(['Tonight 19:30', tonight]);
+  list.push(['Tomorrow 19:30', at(1, 19, 30)], ['In 2 days', at(2, 19, 30)], ['In 3 days', at(3, 19, 30)]);
+  return list;
+}
+function plannerHTML(out) {
+  const pl = PL(), st = ST(), r = R();
+  const start = pl.startAt || Date.now();
+  const startVal = pl.startAt ? toLocalInput(new Date(pl.startAt)) : '';
+  const head = `<section class="card planner"><h3>Bake planner</h3>
+    <div class="plan-inputs">
+      <label for="plan-start">I can start<input type="datetime-local" id="plan-start" value="${startVal}" placeholder="now"><small>${pl.startAt ? '' : 'Now'}</small></label>
+      <label for="bake-at">I want to bake<input type="datetime-local" id="bake-at" value="${pl.bakeAt ? toLocalInput(new Date(pl.bakeAt)) : ''}"></label>
+    </div>
+    <div class="chips">${quickTimes().map(([label, d]) => `<button type="button" class="chip" data-bake-at="${d.getTime()}">${label}</button>`).join('')}
+      ${pl.startAt ? '<button type="button" class="chip ghost" data-act="start-now">Start now</button>' : ''}</div>`;
+  if (!pl.bakeAt) {
+    const steps = scheduleSteps(out);
+    const total = steps.reduce((a, [, h]) => a + h, 0);
+    return `${head}<p class="note">Pick when you want to bake. Impasto suggests how to split the time between room temperature and the fridge, and how much yeast that needs.</p>
+      <h4>Current schedule · ${fmtHours(total)}</h4>${timelineHTML(steps, null)}</section>`;
+  }
+  const hours = (pl.bakeAt - start) / 3600e3;
+  if (hours <= 0) return `${head}<p class="warn">The bake time is before the start time.</p></section>`;
+  const { plans } = recommendPlans({ style: state.style, hours, lead: leadHours(out) });
+  const lv = LEAVENERS[r.yeastType];
+  const cards = plans.map((p, i) => {
+    const v = planVariant(p);
+    const amount = lv.sourdough ? `${grams(v.out.levain.mass)} levain` : `${grams(v.out.yeast)} ${lv.short}`;
+    const rep = leopardFor(v.r, st, v.s);
+    const inUse = r.rt1Hours === p.rt1Hours && (r.ctHours === p.ctHours || (!coldOn() && p.ctHours === 0)) && (calcInput().rt2Hours === p.rt2Hours) && coldOn() === (st.forceCold || p.ctHours > 0);
+    const steps = scheduleSteps(v.out, v.r, st, v.s);
+    const startMs = start + p.delay * 3600e3;
+    const split = [`${fmtHours(p.rt1Hours)} room temp`, p.ctHours ? `${fmtHours(p.ctHours)} fridge` : '', p.rt2Hours ? `${fmtHours(p.rt2Hours)} ${st.rt2 ? st.rt2[0].toLowerCase() + st.rt2.slice(1) : ''}` : ''].filter(Boolean).join(' → ');
+    const nights = (() => { let t = startMs, n = 0; for (const [name, h] of steps) { if (name !== 'Bake' && atNight(new Date(t))) n++; t += h * 3600e3; } return n; })();
+    return `<details class="plan${p.recommended ? ' best' : ''}" ${i === 0 ? 'open' : ''}>
+      <summary><span class="plan-title">${esc(p.title)}${p.recommended ? ' <span class="tag">Recommended</span>' : ''}${inUse ? ' <span class="tag ghost">In use</span>' : ''}</span>
+        <span class="plan-meta">${esc(split)} · ${esc(amount)}${rep ? ` · leopard ${rep.score}` : ''}</span></summary>
+      <p class="note">${esc(p.why)}</p>
+      ${p.warning ? `<p class="warn">${esc(p.warning)}</p>` : ''}
+      ${p.delay >= 1 ? `<p class="note">You have more time than this plan needs. Start at <b>${fmtWhen(new Date(startMs))}</b> (${fmtHours(p.delay)} after your start time).</p>` : ''}
+      ${timelineHTML(steps, startMs)}
+      ${nights ? `<p class="note">${nights === 1 ? 'One step falls' : `${nights} steps fall`} at night. Change the start or bake time, or check whether a step can wait until morning.</p>` : ''}
+      <button type="button" class="btn ${inUse ? '' : 'primary'}" data-plan="${i}" ${inUse ? 'disabled' : ''}>${inUse ? 'Using this plan' : 'Use this plan'}</button>
+    </details>`;
   }).join('');
-  return `<section class="card"><h3>Plan</h3>
-    <label class="inline-field" for="bake-at">Bake at <input type="datetime-local" id="bake-at" value="${bakeAt ? toLocalInput(new Date(bakeAt)) : ''}"></label>
-    <ol class="timeline${bakeAt ? ' timed' : ''}">${rows}</ol><p class="note">Total ≈ ${fmtHours(total)}${bakeAt ? '' : '. Pick a bake time to see when to start each step.'}</p></section>`;
+  return `${head}<p class="note">${fmtHours(hours)} from start to bake.</p>${cards}</section>`;
 }
 function toLocalInput(d) {
   const p = n => String(n).padStart(2, '0');
@@ -432,7 +506,7 @@ document.addEventListener('pointercancel', stopHold);
 
 // ---------- Views ----------
 const PAGE_TITLES = {
-  settings: 'Settings', tools: 'Tools', sourdough: 'Sourdough lab', glossary: 'Glossary', about: 'About', open: 'Saved recipes',
+  settings: 'Settings', tools: 'Tools', sourdough: 'Sourdough lab', glossary: 'Glossary', about: 'About', open: 'Saved recipes', library: 'Recipe library',
   shared: 'Share', help: 'How to use', log: 'Bake log', 'log-edit': 'Log a bake', 'log-detail': 'Bake',
 };
 
@@ -547,6 +621,15 @@ const PAGES = {
     <li>Choose <b>Log this bake</b> when you bake. Later, open the <b>Bake log</b> to see exactly what you used, or load it again.</li>
     </ol><p class="note">Hold − or + to change a value quickly, or type a number into the box.</p>`,
 
+  library: () => `<p class="note">Proven recipes to start from. Loading one replaces the values for its style; your other styles stay as they are.</p>
+    <div class="library">${LIBRARY.map(t => `<article class="card recipe">
+      <p class="eyebrow">${esc(STYLES[t.style].name)}</p><h3>${esc(t.name)}</h3>
+      <p class="muted">${esc(t.summary)}</p>
+      <details><summary>Method</summary><ol>${t.method.map(m => `<li>${esc(m)}</li>`).join('')}</ol>
+        ${t.assumed?.length ? `<p class="note">Not in the original, filled in by Impasto: ${esc(t.assumed.join('; '))}.</p>` : ''}</details>
+      <p class="note">${esc(t.source)}</p>
+      <button class="btn primary" data-template="${t.id}">Load recipe</button></article>`).join('')}</div>`,
+
   open: () => {
     const list = savedList();
     const form = `<form class="list" id="save-form"><div class="row">
@@ -573,7 +656,7 @@ function summarize(r, st, s) {
 
 function newBakeFromCurrent() {
   const st = ST(), r = structuredClone(R()), s = structuredClone(S());
-  const now = bakeAt || Date.now();
+  const now = PL().bakeAt || Date.now();
   const rep = leopardFor(r, st, s);
   return {
     id: newId(), createdAt: Date.now(), bakedAt: now, style: state.style, styleName: st.name,
@@ -603,7 +686,9 @@ function recipeFacts(b) {
   if (cold) facts.push(['Fridge', `${r.ctHours} h at ${tempStr(r.ctTemp)}`]);
   if (st.rt2 && (!st.rt2OnlyWithCold || cold) && r.rt2Hours) facts.push([st.rt2, `${r.rt2Hours} h`]);
   if (s.poolish) facts.push(['Poolish', `${r.poolishPct}% of flour, ${r.poolishHours} h`]);
-  else if (s.biga) facts.push(['Biga', `${r.bigaPct}% of flour at ${r.bigaHydration}%`]);
+  else if (s.biga) facts.push(['Biga', `${r.bigaPct}% of flour at ${r.bigaHydration}%, ${r.bigaHours ?? 16} h at ${tempStr(r.bigaTemp ?? 18)}`]);
+  if (r.yeastManual && !lv.sourdough) facts.push(['Yeast (set by hand)', `${r.yeastPct}% ${lv.short}`]);
+  if (r.recipeName) facts.unshift(['Recipe', r.recipeName]);
   if (s.floursCount > 1) facts.push(['Flour blend', r.flours.slice(0, s.floursCount).map(f => `${f.name} ${f.pct}%`).join(', ')]);
   if (st.pizza) facts.push(['Oven (planned)', tempStr(r.ovenTemp)], ['Bake time', `${r.bakeSeconds} s`], ['Flour strength', `W ${r.flourW}`]);
   return facts;
@@ -781,9 +866,26 @@ document.addEventListener('click', async e => {
   if (t.dataset.style) { state.style = t.dataset.style; persist(); render(); return; }
   if (t.dataset.yeast) { R().yeastType = t.dataset.yeast; persist(); renderCalc(); return; }
   if (t.dataset.unit) { S().unit = t.dataset.unit; persist(); render(); return; }
+  if (t.dataset.bakeAt) { PL().bakeAt = Number(t.dataset.bakeAt); persist(); renderResults(); return; }
+  if (t.dataset.plan != null) {
+    const out = computeDough(calcInput(), S());
+    const start = PL().startAt || Date.now();
+    const p = recommendPlans({ style: state.style, hours: (PL().bakeAt - start) / 3600e3, lead: leadHours(out) }).plans[+t.dataset.plan];
+    if (!p) return;
+    Object.assign(R(), { rt1Hours: p.rt1Hours, ctHours: p.ctHours, rt2Hours: p.rt2Hours });
+    if (!ST().forceCold) S().ct = p.ctHours > 0;
+    persist(); renderCalc(); toast(`Plan applied: ${p.title.toLowerCase()}`); return;
+  }
   if (t.dataset.sethyd) { setValue('hydration', t.dataset.sethyd); toast(`Water set to ${t.dataset.sethyd}%`); return; }
   if (t.dataset.load != null) { const it = savedList()[+t.dataset.load]; if (it && decodeRecipe(it.data)) { go('calc'); toast(`Opened “${it.name}”`); } return; }
   if (t.dataset.del != null) { const l = savedList(); const [it] = l.splice(+t.dataset.del, 1); setSaved(l); render(); toast(`Deleted “${it.name}”`); return; }
+  if (t.dataset.template) {
+    const tpl = LIBRARY.find(x => x.id === t.dataset.template); if (!tpl) return;
+    const keep = { theme: S().theme, keepAwake: S().keepAwake, unit: S().unit, oven: S().oven };
+    const s = { ...S(), biga: false, poolish: false, ct: false, oldDoughIn: false, oldDoughOut: false, twoSizes: false, floursCount: 1, ...tpl.s, ...keep };
+    const r = { ...freshRecipe(tpl.style), ...tpl.r, method: tpl.method, source: tpl.source, recipeName: tpl.name };
+    applyRecipe(tpl.style, r, s); go('calc'); toast(`Loaded “${tpl.name}”`); return;
+  }
   if (t.dataset.openBake) { logId = t.dataset.openBake; go('log-detail'); return; }
   if (t.id === 'tp-use') { R().ballWeight = Number($('#tp-out').dataset.g) || R().ballWeight; persist(); go('calc'); toast('Weight applied'); return; }
   const act = t.dataset.act;
@@ -791,6 +893,8 @@ document.addEventListener('click', async e => {
   menu.hidden = true;
   if (act === 'save') { go('open'); const n = $('#save-name'); n.focus(); n.select(); }
   else if (act === 'share') share();
+  else if (act === 'clear-method') { Object.assign(R(), { method: null, source: null, recipeName: null }); persist(); renderResults(); }
+  else if (act === 'start-now') { PL().startAt = null; persist(); renderResults(); }
   else if (act === 'log-new') { logDraft = newBakeFromCurrent(); logId = null; go('log-edit'); }
   else if (act === 'export') exportBakes();
   else if (act === 'photo-remove') { logDraft.photo = null; render(); }
@@ -845,7 +949,8 @@ document.addEventListener('change', async e => {
   if (el.matches('input.val[data-flour]')) { const f = R().flours[+el.dataset.flour]; f.pct = Math.min(100, Math.max(0, Number(el.value.replace(/[^\d.]/g, '')) || 0)); persist(); renderCalc(); return; }
   if (el.dataset.flourName != null) { R().flours[+el.dataset.flourName].name = el.value.trim() || `Flour ${+el.dataset.flourName + 1}`; persist(); renderResults(); return; }
   if (el.dataset.rtoggle) { R()[el.dataset.rtoggle] = el.checked; persist(); renderCalc(); return; }
-  if (el.id === 'bake-at') { bakeAt = el.value ? new Date(el.value).getTime() : null; renderResults(); return; }
+  if (el.id === 'bake-at') { PL().bakeAt = el.value ? new Date(el.value).getTime() : null; persist(); renderResults(); return; }
+  if (el.id === 'plan-start') { PL().startAt = el.value ? new Date(el.value).getTime() : null; persist(); renderResults(); return; }
   if (el.id === 'lg-photo' && el.files[0]) {
     try {
       // keep typed edits before re-rendering
