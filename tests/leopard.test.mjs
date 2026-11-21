@@ -19,7 +19,12 @@ test('cooler ovens and contemporary style call for more water', () => {
   const electric = recommendHydration({ ovenTemp: 420 }).target;
   const home = recommendHydration({ ovenTemp: 280 }).target;
   assert.ok(wood < electric && electric < home);
-  assert.equal(recommendHydration({ contemporary: true, ovenTemp: 480 }).target, wood + 8);
+  for (const ovenTemp of [480, 420, 350, 280]) {
+    const c = recommendHydration({ contemporary: true, ovenTemp });
+    assert.ok(c.target >= recommendHydration({ ovenTemp }).target + 7, `contemporary wetter at ${ovenTemp} °C`);
+    assert.ok(c.reasons.every(r => !String(r.k || r).includes('AVPN')), 'contemporary advice does not quote the classic AVPN range');
+  }
+  assert.equal(recommendHydration({ contemporary: true, ovenTemp: 480 }).target, 70);
 });
 
 test('warm kitchen and weak flour lower the recommendation', () => {
@@ -57,4 +62,13 @@ test('a long room-temperature-only ferment is not rated as good as a cold one', 
   const warm = leopardReport({ ...contemporary, rt1Hours: 21, ctHours: 0, rt2Hours: 3 }, { ...ctx, cold: false });
   assert.equal(warm.items.find(i => i.id === 'time').status, 'ok');
   assert.ok(warm.score < leopardReport(contemporary, ctx).score);
+});
+
+test('technique tips are specific to the style', async () => {
+  const { techniqueFor } = await import('../web/leopard.js');
+  const nea = techniqueFor('neapolitan').map(([, b]) => b).join(' ');
+  const con = techniqueFor('contemporary').map(([, b]) => b).join(' ');
+  assert.ok(!/contemporary|canotto/i.test(nea), 'Neapolitan tips do not mention the contemporary style');
+  assert.ok(/canotto/i.test(con));
+  assert.equal(techniqueFor('contemporary').filter(([a]) => a === 'Opening the ball').length, 1);
 });

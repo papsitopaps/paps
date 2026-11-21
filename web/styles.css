@@ -375,3 +375,6 @@ label.row { cursor: pointer; }
 .traits li { padding: 4px 10px; border-radius: 99px; background: var(--surface-2); font-size: .82rem; font-weight: 600; }
 
 .nocase { text-transform: none; letter-spacing: .02em; }
+
+.ok-text { color: var(--good); }
+.lib-filter { font-weight: 600; color: var(--ink); }

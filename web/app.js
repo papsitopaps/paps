@@ -2,7 +2,7 @@ import {
   LEAVENERS, computeDough, convertYeast, panDough, waterTemp, cToF, fToC,
   levainBuild, convertStarter, bulkHours, aliquotRise, starterPeakHours,
 } from './engine.js';
-import { leopardReport, recommendHydration, LEOPARD_TECHNIQUE } from './leopard.js';
+import { leopardReport, recommendHydration, techniqueFor } from './leopard.js';
 import { listBakes, getBake, putBake, deleteBake, importBakes, newId, shrinkPhoto } from './bakelog.js';
 import { GLOSSARY } from './glossary.js';
 import { recommendPlans, atNight } from './planner.js';
@@ -13,9 +13,17 @@ import { parseRecipe, searchLinks } from './importer.js';
 
 const APP = 'Prozimi';
 const VERSION = '1.2';
-// Storage keys keep their original names so recipes and settings survive the rename.
-const STORE_KEY = 'impasto:v1';
-const SAVED_KEY = 'impasto:saved:v1';
+const STORE_KEY = 'prozimi:v1';
+const SAVED_KEY = 'prozimi:saved:v1';
+// Data saved before the app was renamed is moved to the new keys once.
+const OLD_KEYS = { [STORE_KEY]: 'impasto:v1', [SAVED_KEY]: 'impasto:saved:v1' };
+function migrateKey(key) {
+  try {
+    if (localStorage.getItem(key) == null && localStorage.getItem(OLD_KEYS[key]) != null) localStorage.setItem(key, localStorage.getItem(OLD_KEYS[key]));
+    localStorage.removeItem(OLD_KEYS[key]);
+  } catch {}
+}
+migrateKey(STORE_KEY); migrateKey(SAVED_KEY);
 
 const freshRecipe = (key, oven = (state?.settings?.oven || 'gas')) =>
   structuredClone({ ...BASE, ...STYLES[key].defaults, ...(OVENS[oven]?.presets[key] || {}) });
@@ -26,7 +34,10 @@ state.settings = { ...DEFAULT_SETTINGS, ...state.settings };
 if (!OVENS[state.settings.oven]) state.settings.oven = 'gas';
 if (!LANGS[state.settings.lang]) state.settings.lang = detectLang(navigator.languages || [navigator.language]);
 setLang(state.settings.lang);
-for (const k of Object.keys(STYLES)) state.recipes[k] = { ...freshRecipe(k), ...(state.recipes[k] || {}) };
+for (const k of Object.keys(STYLES)) {
+  state.recipes[k] = { ...freshRecipe(k), ...(state.recipes[k] || {}) };
+  state.recipes[k].flours = normalizeFlours(state.recipes[k].flours, state.settings.floursCount);
+}
 if (!STYLES[state.style]) state.style = 'neapolitan';
 let view = 'calc';
 let logId = null;      // bake being viewed or edited
@@ -225,7 +236,8 @@ function renderCalc() {
   }
   if (S().floursCount > 1) {
     const blend = groups.find(g => g.title === t('Flour blend'));
-    if (blend) blend.html.push(`<p class="hint wide-note">${tx('The blend always adds up to 100%: changing one flour adjusts the others.')}</p>`);
+    const total = r.flours.slice(0, S().floursCount).reduce((x, f) => x + Number(f.pct), 0);
+    if (blend) blend.html.push(`<p class="hint wide-note"><b class="${Math.abs(total - 100) < 0.01 ? 'ok-text' : 'warn'}">${esc(t('Total: {v}%', { v: round(total, 1) }))}</b> · ${tx('The blend always adds up to 100%: changing one flour adjusts the others.')}</p>`);
   }
   const st = ST();
   const intro = `<details class="style-intro" open><summary><h2>${tx(st.name)}</h2></summary><p>${tx(st.about)}</p>
@@ -270,7 +282,7 @@ function leopardCardHTML(rep) {
       : `<p class="note">${tx('Every factor is in range. The rest is technique: see the tips below.')}</p>`}
     <details><summary>${tx('All factors')}</summary><ul class="checks">${rep.items.map(i =>
       `<li class="${i.status}"><span class="dot" aria-hidden="true"></span><span><b>${tx(i.label)}</b> <span class="muted">${tx(i.value)}</span><br>${tx(i.advice)}</span></li>`).join('')}</ul></details>
-    <details><summary>${tx('Technique tips')}</summary><dl class="tips">${[...(OVENS[S().oven] || OVENS.gas).tips, ...LEOPARD_TECHNIQUE].map(([a, b]) => `<dt>${tx(a)}</dt><dd>${tx(b)}</dd>`).join('')}</dl></details>
+    <details><summary>${tx('Technique tips')}</summary><dl class="tips">${[...(OVENS[S().oven] || OVENS.gas).tips.filter(([, , only]) => !only || only.includes(state.style)), ...techniqueFor(state.style)].map(([a, b]) => `<dt>${tx(a)}</dt><dd>${tx(b)}</dd>`).join('')}</dl></details>
   </section>`;
 }
 
@@ -613,10 +625,16 @@ const PAGES = {
     </ol><p class="note">${tx('Hold − or + to change a value quickly, or type a number into the box.')}</p>`,
 
   library: () => {
-    const fs = findStyle && STYLES[findStyle] ? findStyle : state.style;
+    const sel = findStyle === 'all' || STYLES[findStyle] ? findStyle : state.style;
+    const fs = sel === 'all' ? state.style : sel;
     const links = searchLinks(STYLES[fs].search, STYLES[fs].tag);
-    return `<p class="note">${tx('Proven recipes to start from. Loading one replaces the values for its style; your other styles stay as they are.')}</p>
-    <div class="library">${LIBRARY.map(tp => `<article class="card recipe">
+    const recipes = LIBRARY.filter(tp => sel === 'all' || tp.style === sel);
+    return `<label class="inline-field lib-filter" for="find-style">${tx('Show recipes for')}<select id="find-style">
+      <option value="all" ${sel === 'all' ? 'selected' : ''}>${tx('All styles')}</option>
+      ${Object.entries(STYLES).map(([k, st]) => `<option value="${k}" ${k === sel ? 'selected' : ''}>${tx(st.name)}</option>`).join('')}</select></label>
+    <p class="note">${tx('Proven recipes to start from. Loading one replaces the values for its style; your other styles stay as they are.')}</p>
+    ${recipes.length ? '' : `<p class="note">${esc(t('No library recipes for {style} yet. Use Find recipes online below.', { style: t(STYLES[sel].name) }))}</p>`}
+    <div class="library">${recipes.map(tp => `<article class="card recipe">
       <p class="eyebrow">${tx(STYLES[tp.style].name)}</p><h3>${tx(tp.name)}</h3>
       <p class="muted">${tx(tp.summary)}</p>
       <details><summary>${tx('Method')}</summary><ol>${tp.method.map(m => `<li>${tx(m)}</li>`).join('')}</ol>
@@ -624,9 +642,8 @@ const PAGES = {
       <p class="note">${tx(tp.source)}</p>
       <button class="btn primary" data-template="${tp.id}">${tx('Load recipe')}</button></article>`).join('')}</div>
 
-    <h3>${tx('Find recipes online')}</h3>
+    <h3>${esc(t('Find {style} recipes online', { style: t(STYLES[fs].name) }))}</h3>
     <div class="card find">
-      <label class="inline-field" for="find-style">${tx('Style')}<select id="find-style">${Object.entries(STYLES).map(([k, st]) => `<option value="${k}" ${k === fs ? 'selected' : ''}>${tx(st.name)}</option>`).join('')}</select></label>
       <div class="links">${links.map(l => `<a class="btn" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">${ICON.link}${tx(l.name)}${l.extra ? ` <span class="muted">${esc(l.extra)}</span>` : ''}</a>`).join('')}</div>
       <p class="note">${tx('These open in your browser. Found a recipe with gram weights? Copy it and paste it below to load it into the calculator.')}</p>
     </div>
@@ -881,6 +898,7 @@ function applyRecipe(style, r, s) {
   state.recipes[style] = { ...freshRecipe(style), ...structuredClone(r) };
   const keep = { theme: S().theme, keepAwake: S().keepAwake, unit: S().unit, lang: S().lang, oven: S().oven };
   state.settings = { ...DEFAULT_SETTINGS, ...structuredClone(s), ...keep };
+  state.recipes[style].flours = normalizeFlours(state.recipes[style].flours, state.settings.floursCount);
   persist(); return true;
 }
 function decodeRecipe(str) {
@@ -916,7 +934,7 @@ document.addEventListener('click', async e => {
   if (el.id === 'btn-menu') { menu.hidden = !menu.hidden; el.setAttribute('aria-expanded', String(!menu.hidden)); return; }
   if (el.id === 'btn-theme') { S().theme = THEMES[(THEMES.indexOf(S().theme) + 1) % THEMES.length]; persist(); applyTheme(); toast(themeName(S().theme)); return; }
   if (el.id === 'brand') { e.preventDefault(); go('calc'); return; }
-  if (el.dataset.go) { e.preventDefault(); if (el.dataset.go === 'calc' || el.dataset.go === 'log') logDraft = null; go(el.dataset.go); return; }
+  if (el.dataset.go) { e.preventDefault(); if (el.dataset.go === 'calc' || el.dataset.go === 'log') logDraft = null; if (el.dataset.go === 'library') findStyle = null; go(el.dataset.go); return; }
   if (el.dataset.style) { state.style = el.dataset.style; persist(); render(); return; }
   if (el.dataset.yeast) { R().yeastType = el.dataset.yeast; persist(); renderCalc(); return; }
   if (el.dataset.unit) { S().unit = el.dataset.unit; persist(); render(); return; }

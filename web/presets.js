@@ -73,7 +73,8 @@ export const OVENS = {
     tips: [
       ['Preheat', 'Run the burner on full for 25–30 min. Check the centre of the stone with an IR thermometer and launch at about 430–460 °C. These ovens can reach 500 °C, but above about 470 °C the base burns before the rim sets.'],
       ['Turning', 'The flame comes from one side or the back, so the rim nearest it spots first. Give the pizza a quarter turn every 15–20 s with a small turning peel.'],
-      ['Flame for leoparding', 'Keep the flame high for the first 30–40 s so the rim puffs and spots. For a contemporary pizza, turn it to medium for the last 20–30 s to dry the crumb without burning the spots.'],
+      ['Flame for leoparding', 'Keep the flame high for the whole bake. In 60–90 s the rim puffs and spots before the base burns.', ['neapolitan']],
+      ['Flame for leoparding', 'Keep the flame high for the first 30–40 s so the rim puffs and spots, then turn it to medium for the last 20–30 s so the thick rim bakes through without burning the spots.', ['contemporary']],
       ['Between pizzas', 'Give the stone 1–2 min with the flame on high to recover to launch temperature, and re-check it with the IR thermometer.'],
     ],
   },
