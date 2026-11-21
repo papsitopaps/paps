@@ -4,40 +4,49 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Impasto Dough Calculator</title>
-  <meta name="description" content="Dough calculator for pizza, focaccia, baguettes and sourdough bread: ingredients, yeast and levain from time and temperature.">
-  <meta name="theme-color" content="#b8432a">
+  <meta name="description" content="Dough calculator for Neapolitan and contemporary pizza, focaccia, baguettes and sourdough: yeast, hydration, leoparding coach and bake log.">
+  <meta name="theme-color" content="#f4f5f3" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0e1011" media="(prefers-color-scheme: dark)">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Impasto">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Inter:wght@400;500;600;700&display=swap">
   <link rel="stylesheet" href="styles.css">
   <script type="module" src="app.js"></script>
 </head>
 <body>
-  <header class="bar">
-    <button class="icon-btn" id="btn-help" aria-label="Help">?</button>
-    <h1 id="title">Impasto</h1>
-    <button class="icon-btn" id="btn-menu" aria-label="Menu" aria-expanded="false">
-      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-    </button>
+  <header class="topbar">
+    <a href="#" id="brand" class="brand" aria-label="Impasto calculator">
+      <img src="icons/icon.svg" alt="" width="30" height="30"><span>Impasto</span>
+    </a>
+    <span id="page-title" class="page-title"></span>
+    <div class="bar-actions">
+      <button class="icon-btn text" id="btn-log" data-go="log" aria-label="Bake log"></button>
+      <button class="icon-btn" id="btn-menu" aria-label="Menu" aria-expanded="false" aria-controls="menu"></button>
+    </div>
     <nav class="menu" id="menu" hidden>
-      <button data-go="open">Open <span class="badge" id="saved-count">0</span></button>
-      <button data-act="save">Save</button>
-      <button data-act="share">Share</button>
+      <button data-go="log">Bake log</button>
+      <button data-go="open">Saved recipes <span class="badge" id="saved-count">0</span></button>
+      <button data-act="save">Save recipe</button>
+      <button data-act="share">Share recipe</button>
       <hr>
       <button data-go="settings">Settings</button>
       <button data-go="tools">Tools</button>
       <button data-go="sourdough">Sourdough lab</button>
       <hr>
       <button data-go="glossary">Glossary</button>
+      <button data-go="help">How to use</button>
       <button data-go="about">About</button>
     </nav>
   </header>
 
-  <div class="tabs" id="tabs" role="tablist"></div>
+  <nav class="tabs" id="tabs" role="tablist" aria-label="Dough style"></nav>
 
   <main id="view"></main>
 

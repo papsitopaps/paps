@@ -1,7 +1,7 @@
 // Offline cache: serve app files from cache, refresh them in the background.
-const CACHE = 'impasto-v2';
+const CACHE = 'impasto-v3';
 const FILES = [
-  './', 'index.html', 'styles.css', 'app.js', 'engine.js', 'glossary.js', 'manifest.webmanifest',
+  './', 'index.html', 'styles.css', 'app.js', 'engine.js', 'glossary.js', 'leopard.js', 'bakelog.js', 'manifest.webmanifest',
   'favicon.ico', 'apple-touch-icon.png', 'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png',
 ];
 

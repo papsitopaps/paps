@@ -1,12 +1,12 @@
 {
   "name": "Impasto — Dough Calculator",
   "short_name": "Impasto",
-  "description": "Dough calculator for pizza, focaccia, baguettes and sourdough bread.",
+  "description": "Dough calculator for Neapolitan and contemporary pizza, focaccia, baguettes and sourdough bread.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#faf7f2",
-  "theme_color": "#b8432a",
+  "background_color": "#f4f5f3",
+  "theme_color": "#16181b",
   "categories": ["food", "lifestyle", "utilities"],
   "icons": [
     { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },

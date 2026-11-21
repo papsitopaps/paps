@@ -14,7 +14,7 @@ See [`docs/reverse-engineering.md`](docs/reverse-engineering.md) and [`docs/form
 
 ## Features
 
-- **Styles:** Neapolitan, Roman pan, Focaccia, Baguette and Sourdough loaf, each with its own defaults and fermentation stages.
+- **Styles:** Neapolitan, Contemporary (canotto), Roman pan, Focaccia, Baguette and Sourdough loaf, each with its own defaults and fermentation stages.
 - **Amounts:** pieces × weight, two piece sizes, wastage, and a blend of up to 3 flours.
 - **Ingredients:** water, salt, oil/fat, sugar/malt.
 - **Fermentation:** room temperature plus fridge (CT) hours, with the yeast amount following time and temperature.
@@ -25,6 +25,9 @@ See [`docs/reverse-engineering.md`](docs/reverse-engineering.md) and [`docs/form
 - **Sourdough lab:** levain build (ratio, hydration, time to peak), bulk fermentation estimate with aliquot-jar target, and starter hydration converter.
 - **Tools:** yeast converter, dough weight for a pan, and water temperature for a target dough temperature.
 - **Recipes:** save, open and share as a link.
+- **Leoparding coach:** scores Neapolitan and Contemporary recipes and bake setups for leopard spotting, lists the biggest fixes, and adds technique tips. See [`docs/leoparding.md`](docs/leoparding.md).
+- **Hydration advisor:** suggests a hydration from your oven temperature, kitchen temperature, flour strength and fermentation time, starting from the AVPN guideline.
+- **Bake log:** saves each bake with its exact recipe, process, notes, ratings, the oven temperature you actually used and a photo. Search past bakes, load one back into the calculator, or export and import them as JSON for backup.
 - **Display:** °C/°F, light/dark theme, keep screen on, glossary.
 
 ## Run
