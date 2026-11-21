@@ -113,47 +113,47 @@ main { max-width: 1160px; margin: 0 auto; padding: 16px max(16px, env(safe-area-
 /* ---------- Calculator layout ---------- */
 .calc { display: grid; gap: 20px; }
 @media (min-width: 900px) {
-  .calc { grid-template-columns: minmax(0, 1fr) minmax(0, 440px); align-items: start; }
+  .calc { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
   .results { position: sticky; top: 76px; max-height: calc(100vh - 92px); overflow: auto; scrollbar-width: thin; padding-bottom: 8px; }
 }
-.inputs { display: grid; gap: 22px; min-width: 0; }
-.eyebrow { margin: 0 0 10px; font: 700 .74rem/1.2 var(--font-body); letter-spacing: .09em; text-transform: uppercase; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+.inputs { display: grid; gap: 14px; min-width: 0; }
+.eyebrow { margin: 0 0 6px; font: 700 .74rem/1.2 var(--font-body); letter-spacing: .09em; text-transform: uppercase; color: var(--muted); display: flex; align-items: center; gap: 6px; }
 .eyebrow svg { width: 14px; height: 14px; }
 /* Inputs come in pairs (count + weight, water + salt, time + temperature), so use two columns;
    a leftover last tile spans the row instead of sitting alone. One column on phones. */
-.tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; align-items: start; }
+.tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; align-items: start; }
 .tiles > :last-child:nth-child(odd) { grid-column: 1 / -1; }
 @media (max-width: 520px) { .tiles { grid-template-columns: minmax(0, 1fr); } }
 
 .tile {
   background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md);
-  padding: 12px 12px 12px 14px; display: grid; grid-template-columns: minmax(0, 1fr); align-content: start; gap: 6px; min-width: 0;
+  padding: 7px 8px 7px 12px; display: grid; grid-template-columns: minmax(0, 1fr); align-content: start; gap: 2px; min-width: 0; border-radius: 12px;
   transition: border-color .15s;
 }
 .tile:focus-within { border-color: color-mix(in srgb, var(--accent) 55%, var(--line)); }
 .tile.wide { grid-column: 1 / -1; }
-.tile > label, .tile .label { font-size: .82rem; font-weight: 500; color: var(--muted); }
+.tile > label, .tile .label { font-size: .75rem; font-weight: 500; color: var(--muted); }
 .tile .unit { color: var(--accent); margin-left: 4px; }
 .tile-row { display: flex; align-items: center; gap: 8px; }
 .val {
   flex: 1; min-width: 0; width: 100%; border: 0; background: none; padding: 0;
-  font: 700 1.55rem/1.1 var(--font-display); letter-spacing: -.02em; font-variant-numeric: tabular-nums;
+  font: 700 1.2rem/1.1 var(--font-display); letter-spacing: -.02em; font-variant-numeric: tabular-nums;
 }
 .val:focus { outline: none; }
 .val.ok { color: var(--good); }
 .val.off { color: var(--mid); }
 .steps { display: flex; gap: 6px; flex: none; }
 .steps button {
-  width: 38px; height: 38px; border-radius: 50%; border: 0; background: var(--surface-2); color: var(--ink);
+  width: 30px; height: 30px; border-radius: 50%; border: 0; background: var(--surface-2); color: var(--ink);
   display: grid; place-items: center; cursor: pointer; touch-action: manipulation; transition: background .12s, transform .08s;
 }
 .steps button:hover { background: color-mix(in srgb, var(--accent) 14%, var(--surface-2)); }
 .steps button:active { transform: scale(.92); }
-.steps svg { width: 18px; height: 18px; }
+.steps svg { width: 15px; height: 15px; }
 .flour-name { border: 0; background: none; padding: 0; font-size: .82rem; font-weight: 500; color: var(--muted); }
 .hint { font-size: .8rem; color: var(--muted); }
 
-.advice { font-size: .82rem; color: var(--muted); display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding-top: 6px; border-top: 1px dashed var(--line); }
+.advice { font-size: .76rem; color: var(--muted); display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding-top: 6px; border-top: 1px dashed var(--line); }
 .advice > span { flex: 1 1 12em; min-width: 0; }
 .advice b { color: var(--ink); font-weight: 600; }
 .advice details { flex-basis: 100%; }
@@ -162,7 +162,7 @@ main { max-width: 1160px; margin: 0 auto; padding: 16px max(16px, env(safe-area-
 .chip { border: 0; border-radius: 99px; padding: 4px 11px; background: var(--accent-soft); color: var(--accent); font-weight: 700; font-size: .8rem; cursor: pointer; }
 
 .seg { display: flex; padding: 4px; gap: 4px; background: var(--surface-2); border-radius: 12px; }
-.seg button { flex: 1; padding: 8px 6px; border: 0; border-radius: 9px; background: none; font-weight: 700; cursor: pointer; color: var(--muted); }
+.seg button { flex: 1; padding: 5px 6px; font-size: .88rem; border: 0; border-radius: 9px; background: none; font-weight: 700; cursor: pointer; color: var(--muted); }
 .seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgb(0 0 0 / .12); }
 .seg.small { flex: 0 0 120px; }
 .switch-row { display: flex; align-items: center; justify-content: space-between; cursor: pointer; font-weight: 500; }
@@ -370,17 +370,21 @@ label.row { cursor: pointer; }
 #btn-theme svg { width: 20px; height: 20px; }
 
 /* Style intro */
-.style-intro { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 14px 16px; }
+.style-intro { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); padding: 10px 14px; }
 .style-intro > summary { list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; }
 .style-intro > summary::-webkit-details-marker { display: none; }
 .style-intro > summary::after { content: "–"; color: var(--muted); font-weight: 700; }
 .style-intro:not([open]) > summary::after { content: "+"; }
-.style-intro h2 { margin: 0; font-size: 1.3rem; }
-.style-intro p { margin: 6px 0 10px; color: var(--muted); max-width: 65ch; }
+.style-intro h2 { margin: 0; font-size: 1.1rem; }
+.style-intro p { margin: 4px 0 8px; color: var(--muted); max-width: 65ch; font-size: .88rem; line-height: 1.45; }
 .traits { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
-.traits li { padding: 4px 10px; border-radius: 99px; background: var(--surface-2); font-size: .82rem; font-weight: 600; }
+.traits li { padding: 2px 9px; border-radius: 99px; background: var(--surface-2); font-size: .75rem; font-weight: 600; }
 
 .nocase { text-transform: none; letter-spacing: .02em; }
 
 .ok-text { color: var(--good); }
 .lib-filter { font-weight: 600; color: var(--ink); }
+
+/* Compact switch rows and hints inside tiles */
+.switch-row { padding-top: 9px; padding-bottom: 9px; font-size: .9rem; }
+.tile .hint { font-size: .74rem; }
