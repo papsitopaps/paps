@@ -11,9 +11,8 @@ export const LEAVENERS = {
   LSD: { short: 'LSD', label: 'Liquid sourdough',  factor: 40,    sourdough: true, hydration: 100 },
 };
 
-// Calibration constant for the fresh-yeast model. Chosen so the reference case we
-// observed in PizzApp+ (60% water, 3% salt, 8 h at 20 °C, fresh yeast) returns
-// 0.497% of flour = 0.76 g in a 250 g ball.
+// Calibration constant for the fresh-yeast model: 60% water, 3% salt, 8 h at 20 °C
+// with fresh yeast gives 0.497% of flour = 0.76 g in a 250 g ball.
 export const K_YEAST = 6.6069e5;
 
 export const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));

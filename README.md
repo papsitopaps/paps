@@ -9,8 +9,7 @@ It is an installable web app (PWA), so one codebase runs:
 
 It works offline.
 
-It was built by reverse-engineering the behaviour of [PizzApp+](https://apps.apple.com/app/id1228158792) with the [REA](https://github.com/morluto/rea) black-box workflow, then extending it.
-See [`docs/reverse-engineering.md`](docs/reverse-engineering.md) and [`docs/formulas.md`](docs/formulas.md).
+How the numbers are worked out is in [`docs/formulas.md`](docs/formulas.md) and [`docs/leoparding.md`](docs/leoparding.md).
 
 ## Features
 
@@ -25,6 +24,7 @@ See [`docs/reverse-engineering.md`](docs/reverse-engineering.md) and [`docs/form
 - **Sourdough lab:** levain build (ratio, hydration, time to peak), bulk fermentation estimate with aliquot-jar target, and starter hydration converter.
 - **Tools:** yeast converter, dough weight for a pan, and water temperature for a target dough temperature.
 - **Recipes:** save, open and share as a link.
+- **Made for high-temperature pizza ovens:** the default is a gas pizza oven reaching about 500 °C (such as an Ooni Koda or a Gozney Roccbox or Dome). Wood or pellet, electric and home-oven presets are also available. Each preset sets the stone temperature, bake time and technique tips.
 - **Leoparding coach:** scores Neapolitan and Contemporary recipes and bake setups for leopard spotting, lists the biggest fixes, and adds technique tips. See [`docs/leoparding.md`](docs/leoparding.md).
 - **Hydration advisor:** suggests a hydration from your oven temperature, kitchen temperature, flour strength and fermentation time, starting from the AVPN guideline.
 - **Bake log:** saves each bake with its exact recipe, process, notes, ratings, the oven temperature you actually used and a photo. Search past bakes, load one back into the calculator, or export and import them as JSON for backup.

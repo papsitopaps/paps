@@ -26,12 +26,12 @@ export const STYLES = {
   neapolitan: {
     name: 'Neapolitan', piece: 'Dough balls', weight: 'Ball weight', rt1: 'RT leavening', rt2: 'Balls at RT after fridge',
     rt2OnlyWithCold: true, pizza: true, range: [55, 70],
-    defaults: { rt2Hours: 4, ovenTemp: 470, bakeSeconds: 75, flourW: 260 },
+    defaults: { rt2Hours: 4, ovenTemp: 450, bakeSeconds: 75, flourW: 260 },
   },
   contemporary: {
     name: 'Contemporary', piece: 'Dough balls', weight: 'Ball weight', rt1: 'Bulk at RT', rt2: 'Balls at RT',
     pizza: true, contemporary: true, forceCold: true, range: [65, 78],
-    defaults: { ballWeight: 270, hydration: 70, salt: 2.8, rt1Hours: 2, ctHours: 24, rt2Hours: 4, rtTemp: 21, ovenTemp: 450, bakeSeconds: 80, flourW: 300 },
+    defaults: { ballWeight: 270, hydration: 70, salt: 2.8, rt1Hours: 2, ctHours: 24, rt2Hours: 4, rtTemp: 21, ovenTemp: 440, bakeSeconds: 85, flourW: 300 },
   },
   roman: {
     name: 'Roman pan', piece: 'Pans', weight: 'Dough per pan', rt1: 'RT before fridge', rt2: 'RT after fridge',
@@ -55,17 +55,48 @@ export const STYLES = {
   },
 };
 
+// Pizza ovens. Temperatures are the stone (floor) temperature measured with an IR thermometer.
+export const OVENS = {
+  gas: {
+    name: 'Gas pizza oven (up to 500 °C)', hint: 'For example an Ooni Koda or a Gozney Roccbox or Dome.', max: 500,
+    presets: { neapolitan: { ovenTemp: 450, bakeSeconds: 75 }, contemporary: { ovenTemp: 440, bakeSeconds: 85 } },
+    tips: [
+      ['Preheat', 'Run the burner on full for 25–30 min. Check the centre of the stone with an IR thermometer and launch at about 430–460 °C. These ovens can reach 500 °C, but above about 470 °C the base burns before the rim sets.'],
+      ['Turning', 'The flame comes from one side or the back, so the rim nearest it spots first. Give the pizza a quarter turn every 15–20 s with a small turning peel.'],
+      ['Flame for leoparding', 'Keep the flame high for the first 30–40 s so the rim puffs and spots. For a contemporary pizza, turn it to medium for the last 20–30 s to dry the crumb without burning the spots.'],
+      ['Between pizzas', 'Give the stone 1–2 min with the flame on high to recover to launch temperature, and re-check it with the IR thermometer.'],
+    ],
+  },
+  wood: {
+    name: 'Wood or pellet pizza oven (up to 500 °C)', max: 520,
+    presets: { neapolitan: { ovenTemp: 470, bakeSeconds: 70 }, contemporary: { ovenTemp: 450, bakeSeconds: 80 } },
+    tips: [['Fire', 'Keep a live flame rolling over the dome. Launch on a floor at about 430–450 °C, then dome the pizza for a few seconds to set the spots.']],
+  },
+  electric: {
+    name: 'Electric pizza oven (up to 400–450 °C)', max: 460,
+    presets: { neapolitan: { ovenTemp: 400, bakeSeconds: 100 }, contemporary: { ovenTemp: 400, bakeSeconds: 110 } },
+    tips: [['Top element', 'Set the top element to maximum and the stone a little lower. The top heat does the leoparding.']],
+  },
+  home: {
+    name: 'Home oven with steel or stone (up to 300 °C)', max: 320,
+    presets: { neapolitan: { ovenTemp: 290, bakeSeconds: 300 }, contemporary: { ovenTemp: 290, bakeSeconds: 330 } },
+    tips: [['Steel and grill', 'Preheat a baking steel on the top rack for 45 min, then finish under the grill (broiler) for the last minute to get some spotting.']],
+  },
+};
+
 const DEFAULT_SETTINGS = {
   twoSizes: false, floursCount: 1, fats: false, sugar: false, ct: false,
   oldDoughIn: false, oldDoughOut: false, biga: false, poolish: false,
-  wastage: 0, keepAwake: false, unit: 'C', theme: 'auto',
+  wastage: 0, keepAwake: false, unit: 'C', theme: 'auto', oven: 'gas',
 };
 
-const freshRecipe = key => structuredClone({ ...BASE, ...STYLES[key].defaults });
+const freshRecipe = (key, oven = (state?.settings?.oven || 'gas')) =>
+  structuredClone({ ...BASE, ...STYLES[key].defaults, ...(OVENS[oven]?.presets[key] || {}) });
 
 // ---------- State ----------
 let state = load() || { style: 'neapolitan', recipes: {}, settings: { ...DEFAULT_SETTINGS } };
 state.settings = { ...DEFAULT_SETTINGS, ...state.settings };
+if (!OVENS[state.settings.oven]) state.settings.oven = 'gas';
 for (const k of Object.keys(STYLES)) state.recipes[k] = { ...freshRecipe(k), ...(state.recipes[k] || {}) };
 if (!STYLES[state.style]) state.style = 'neapolitan';
 let view = 'calc';
@@ -186,7 +217,7 @@ function fieldDefs() {
 
   if (st.pizza) {
     out.push({ sub: 'Bake' });
-    out.push(temp('ovenTemp', 'Oven', 150, 560), { key: 'bakeSeconds', label: 'Bake time', step: 5, min: 30, max: 900, fmt: v => `${v} s` });
+    out.push(temp('ovenTemp', 'Oven (stone)', 150, (OVENS[s.oven] || OVENS.gas).max), { key: 'bakeSeconds', label: 'Bake time', step: 5, min: 30, max: 900, fmt: v => `${v} s` });
     out.push({ key: 'flourW', label: 'Flour strength (W)', step: 10, min: 120, max: 450, fmt: v => `W ${v}` });
   }
   if (s.floursCount > 1) {
@@ -276,7 +307,7 @@ function leopardCardHTML(rep) {
       : '<p class="note">Every factor is in range. The rest is technique: see the tips below.</p>'}
     <details><summary>All factors</summary><ul class="checks">${rep.items.map(i =>
       `<li class="${i.status}"><span class="dot" aria-hidden="true"></span><span><b>${esc(i.label)}</b> <span class="muted">${esc(i.value)}</span><br>${esc(i.advice)}</span></li>`).join('')}</ul></details>
-    <details><summary>Technique tips</summary><dl class="tips">${LEOPARD_TECHNIQUE.map(([t, d]) => `<dt>${esc(t)}</dt><dd>${esc(d)}</dd>`).join('')}</dl></details>
+    <details><summary>Technique tips</summary><dl class="tips">${[...(OVENS[S().oven] || OVENS.gas).tips, ...LEOPARD_TECHNIQUE].map(([t, d]) => `<dt>${esc(t)}</dt><dd>${esc(d)}</dd>`).join('')}</dl></details>
   </section>`;
 }
 
@@ -440,6 +471,7 @@ const PAGES = {
     ${toggleRow('biga', 'Biga', 'Stiff pre-ferment. Turns poolish off.')}
     ${toggleRow('poolish', 'Poolish', 'Liquid pre-ferment. Turns biga off.')}
     <div class="row"><label for="set-waste">Wastage</label><select id="set-waste" data-setting="wastage">${[0, 1, 2, 3, 4, 5, 7, 10].map(n => `<option value="${n}" ${S().wastage == n ? 'selected' : ''}>${n}%</option>`).join('')}</select></div>
+    <div class="row"><label for="set-oven">Pizza oven<small>Sets the stone temperature, bake time and tips for Neapolitan and Contemporary. ${esc((OVENS[S().oven] || OVENS.gas).hint || '')}</small></label><select id="set-oven" data-setting="oven">${Object.entries(OVENS).map(([k, o]) => `<option value="${k}" ${S().oven === k ? 'selected' : ''}>${esc(o.name)}</option>`).join('')}</select></div>
     ${toggleRow('keepAwake', 'Keep screen on')}
     <div class="row"><span>Temperature</span><div class="seg small">${['C', 'F'].map(u => `<button data-unit="${u}" aria-pressed="${S().unit === u}">°${u}</button>`).join('')}</div></div>
     <div class="row"><label for="set-theme">Appearance</label><select id="set-theme" data-setting="theme">${['auto', 'light', 'dark'].map(t => `<option value="${t}" ${S().theme === t ? 'selected' : ''}>${t[0].toUpperCase() + t.slice(1)}</option>`).join('')}</select></div>
@@ -500,12 +532,11 @@ const PAGES = {
 
   glossary: () => `<dl class="gloss">${GLOSSARY.map(([t, d]) => `<dt>${esc(t)}</dt><dd>${esc(d)}</dd>`).join('')}</dl>`,
 
-  about: () => `<div class="prose"><p><b>Impasto ${VERSION}</b> works out dough ingredients for pizza, focaccia, baguettes and sourdough bread. It suggests how much yeast or levain to use for the time and temperature you pick.</p>
+  about: () => `<div class="prose"><p><b>Impasto ${VERSION}</b> is made for home pizza makers with a high-temperature pizza oven (gas, wood or pellet, up to about 500 °C). It also works out dough for focaccia, baguettes and sourdough bread. It suggests how much yeast or levain to use for the time and temperature you pick.</p>
     <p>For Neapolitan and Contemporary pizza it also suggests a hydration for your oven, kitchen and flour. A leoparding coach scores your recipe and bake setup.</p>
     <p>The <b>Bake log</b> keeps every bake with its exact recipe, notes, ratings and a photo. Recipes and bakes are stored only on this device. Use <i>Export</i> in the bake log to back them up or move them to another device.</p>
     <p>Install the app with <i>Add to Dock</i> (Safari on macOS), <i>Add to Home Screen</i> (iPhone and iPad), or the install button in Chrome and Edge. It works offline.</p>
-    <p>The yeast, sourdough and leoparding models are informed approximations. Treat the numbers as a starting point and keep notes in the log.</p>
-    <p class="note">An independent project, inspired by dough calculators such as PizzApp+. Not affiliated with NFP Software.</p></div>`,
+    <p>The yeast, sourdough and leoparding models are informed approximations. Treat the numbers as a starting point and keep notes in the log.</p></div>`,
 
   help: () => `<ol class="prose">
     <li>Pick a style at the top.</li>
@@ -736,6 +767,7 @@ async function share() {
 }
 
 // ---------- Events ----------
+const p0 = o => `${o.presets.neapolitan.ovenTemp} °C, ${o.presets.neapolitan.bakeSeconds} s for Neapolitan`;
 function go(v) { view = v; $('#menu').hidden = true; $('#btn-menu').setAttribute('aria-expanded', 'false'); render(); window.scrollTo(0, 0); }
 
 document.addEventListener('click', async e => {
@@ -834,7 +866,12 @@ document.addEventListener('change', async e => {
   }
   if (el.dataset.setting) {
     const k = el.dataset.setting;
-    S()[k] = el.type === 'checkbox' ? el.checked : (k === 'theme' ? el.value : Number(el.value));
+    S()[k] = el.type === 'checkbox' ? el.checked : (k === 'theme' || k === 'oven' ? el.value : Number(el.value));
+    if (k === 'oven') {
+      const o = OVENS[el.value];
+      for (const [style, p] of Object.entries(o.presets)) Object.assign(state.recipes[style], p);
+      toast(`Oven set: ${o.name.split(' (')[0]}, ${p0(o)}`);
+    }
     if (k === 'biga' && el.checked) S().poolish = false;
     if (k === 'poolish' && el.checked) S().biga = false;
     persist();

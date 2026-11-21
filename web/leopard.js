@@ -80,11 +80,11 @@ export function leopardReport(r, ctx) {
   }
 
   // 4. Oven temperature
-  const oven = band(r.ovenTemp, [430, 485], [400, 510]);
-  add('oven', 'Oven temperature', 18, oven, `${Math.round(r.ovenTemp)} °C`,
+  const oven = band(r.ovenTemp, [420, 480], [390, 500]);
+  add('oven', 'Stone temperature', 18, oven, `${Math.round(r.ovenTemp)} °C`,
     oven === 'good' ? 'Hot enough to char the bubble tips before the rest of the rim colours.'
-      : r.ovenTemp < 430 ? 'Leoparding needs 430–485 °C (floor about 400–430 °C). Lower temperatures brown evenly.'
-        : 'Above 485 °C the tips burn before the crumb sets. Lower the flame a little, or launch on a cooler part of the floor.');
+      : r.ovenTemp < 420 ? 'Launch on a stone at 420–480 °C (measure it with an IR thermometer). Cooler stones brown the rim evenly instead of spotting it.'
+        : 'Above 480 °C the base and tips burn before the crumb sets. Let the stone drop a little, or launch on a cooler spot.');
 
   // 5. Bake time
   const bake = band(r.bakeSeconds, [60, 100], [45, 120]);
@@ -142,6 +142,6 @@ export const LEOPARD_TECHNIQUE = [
   ['Opening the ball', 'Press from the centre outwards to push gas into the rim, and never flatten the cornicione. For the contemporary style, leave a wide border (3–4 cm) untouched.'],
   ['Ball readiness', 'Bake when the ball is relaxed and slightly domed, with small bubbles underneath. Over-proofed balls are slack and pale; under-proofed ones give a few big blisters.'],
   ['Dough skin', 'Keep the balls in airtight trays. A dried-out skin browns evenly instead of spotting.'],
-  ['Floor and flame', 'Launch onto a floor at about 400–430 °C with a strong flame. Turn after 20–30 s. At the end, lift the pizza toward the dome for a few seconds to set the spots.'],
+  ['Floor and flame', 'Launch onto a stone at about 420–460 °C with a strong flame. Turn after 20–30 s. At the end, lift the pizza toward the dome for a few seconds to set the spots.'],
   ['Flour choice', 'Use a 00 flour with about 12.5–13.5% protein. Swapping in 10–20% type 1 or wholemeal adds enzymes and colour.'],
 ];
