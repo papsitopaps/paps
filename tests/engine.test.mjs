@@ -73,7 +73,7 @@ test('two sizes, wastage and old dough out scale the batch', () => {
 test('flour blend splits main flour', () => {
   const o = computeDough({ ...base, flours: [{ name: 'A', pct: 70 }, { name: 'B', pct: 30 }] }, { floursCount: 2 });
   near(o.flours[0].grams + o.flours[1].grams, o.flour, 1e-9, 'blend');
-  assert.equal(o.warnings.filter(w => w.includes('blend')).length, 0);
+  assert.equal(o.warnings.filter(w => (w.k || w).includes('blend')).length, 0);
 });
 
 test('tools', () => {

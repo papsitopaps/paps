@@ -49,7 +49,7 @@ The coach lists the biggest gaps first.
 
 ## Ovens
 
-Impasto is aimed at home pizza ovens that reach about 500 °C, for example an Ooni Koda or a Gozney Roccbox or Dome. The default oven is a generic **gas pizza oven (up to 500 °C)**:
+Prozimi is aimed at home pizza ovens that reach about 500 °C, for example an Ooni Koda or a Gozney Roccbox or Dome. The default oven is a generic **gas pizza oven (up to 500 °C)**:
 
 | Style | Stone temperature | Bake time |
 |---|---|---|

@@ -8,6 +8,8 @@ const band = (v, good, ok) =>
   v >= good[0] && v <= good[1] ? 'good' : (v >= ok[0] && v <= ok[1] ? 'ok' : 'bad');
 
 const POINTS = { good: 1, ok: 0.5, bad: 0 };
+// Message object: English key with {placeholders}, translated by the UI (see i18n.js).
+const msg = (k, p) => (p ? { k, p } : k);
 
 /** Flour strength (W) needed for a fermentation of `hours` real hours. */
 /**
@@ -22,19 +24,19 @@ const POINTS = { good: 1, ok: 0.5, bad: 0 };
 export function recommendHydration({ contemporary = false, ovenTemp = 450, roomTemp = 21, flourW = 280, hours = 24 }) {
   const reasons = [];
   let base;
-  if (ovenTemp >= 450) { base = 60; reasons.push(`${Math.round(ovenTemp)} °C oven, a 60–90 s bake: classic AVPN range`); }
-  else if (ovenTemp >= 400) { base = 63; reasons.push(`${Math.round(ovenTemp)} °C oven: a slightly longer bake, so a little more water`); }
-  else if (ovenTemp >= 330) { base = 66; reasons.push(`${Math.round(ovenTemp)} °C oven: a 2–3 min bake dries the dough, so more water`); }
-  else { base = 69; reasons.push(`${Math.round(ovenTemp)} °C home oven: a 5–8 min bake needs a wetter dough to stay soft`); }
-  if (contemporary) { base += 8; reasons.push('contemporary style: wetter for a big, airy rim'); }
+  if (ovenTemp >= 450) { base = 60; reasons.push(msg('{t} °C oven, a 60–90 s bake: classic AVPN range', { t: Math.round(ovenTemp) })); }
+  else if (ovenTemp >= 400) { base = 63; reasons.push(msg('{t} °C oven: a slightly longer bake, so a little more water', { t: Math.round(ovenTemp) })); }
+  else if (ovenTemp >= 330) { base = 66; reasons.push(msg('{t} °C oven: a 2–3 min bake dries the dough, so more water', { t: Math.round(ovenTemp) })); }
+  else { base = 69; reasons.push(msg('{t} °C home oven: a 5–8 min bake needs a wetter dough to stay soft', { t: Math.round(ovenTemp) })); }
+  if (contemporary) { base += 8; reasons.push('Contemporary style: wetter for a big, airy rim'); }
 
   let adj = 0;
-  if (roomTemp > 22) { const d = Math.min(3, (roomTemp - 22) * 0.5); adj -= d; reasons.push(`warm kitchen (${Math.round(roomTemp)} °C): −${d.toFixed(1)} pts, as dough slackens faster`); }
-  else if (roomTemp < 18) { const d = Math.min(2, (18 - roomTemp) * 0.5); adj += d; reasons.push(`cool kitchen (${Math.round(roomTemp)} °C): +${d.toFixed(1)} pts`); }
-  if (flourW < 240) { adj -= 3; reasons.push(`weak flour (W ${flourW}): −3 pts`); }
-  else if (flourW < 280) { adj -= 1; reasons.push(`medium flour (W ${flourW}): −1 pt`); }
-  else if (flourW > 330) { adj += 2; reasons.push(`strong flour (W ${flourW}): +2 pts`); }
-  if (hours > 48) { adj -= 1; reasons.push(`long ferment (${Math.round(hours)} h): −1 pt`); }
+  if (roomTemp > 22) { const d = Math.min(3, (roomTemp - 22) * 0.5); adj -= d; reasons.push(msg('Warm kitchen ({t} °C): −{d} pts, as dough slackens faster', { t: Math.round(roomTemp), d: d.toFixed(1) })); }
+  else if (roomTemp < 18) { const d = Math.min(2, (18 - roomTemp) * 0.5); adj += d; reasons.push(msg('Cool kitchen ({t} °C): +{d} pts', { t: Math.round(roomTemp), d: d.toFixed(1) })); }
+  if (flourW < 240) { adj -= 3; reasons.push(msg('Weak flour (W {w}): −3 pts', { w: flourW })); }
+  else if (flourW < 280) { adj -= 1; reasons.push(msg('Medium flour (W {w}): −1 pt', { w: flourW })); }
+  else if (flourW > 330) { adj += 2; reasons.push(msg('Strong flour (W {w}): +2 pts', { w: flourW })); }
+  if (hours > 48) { adj -= 1; reasons.push(msg('Long ferment ({h} h): −1 pt', { h: Math.round(hours) })); }
 
   const target = Math.round(base + adj);
   return { target, min: target - 2, max: target + 2, reasons };
@@ -56,18 +58,18 @@ export function leopardReport(r, ctx) {
   const total0 = r.rt1Hours + (ctx.cold ? r.ctHours : 0) + (ctx.cold || ctx.rt2Counts ? r.rt2Hours : 0);
   const rec = recommendHydration({ contemporary, ovenTemp: r.ovenTemp, roomTemp: r.rtTemp, flourW: r.flourW, hours: total0 });
   const hyd = band(r.hydration, [rec.min, rec.max], [rec.min - 3, rec.max + 3]);
-  add('hydration', 'Hydration', 15, hyd, `${r.hydration}% (aim ${rec.min}–${rec.max}%)`,
+  add('hydration', 'Hydration', 15, hyd, msg('{v}% (aim {min}–{max}%)', { v: r.hydration, min: rec.min, max: rec.max }),
     hyd === 'good' ? 'Right for your oven and kitchen. There is enough steam to puff the rim and char the bubble tips.'
       : r.hydration < rec.min
-        ? `Raise toward ${rec.target}%. A drier dough browns evenly instead of spotting.`
-        : `Come down toward ${rec.target}%. Too wet for this setup gives large, pale blisters and a dough that's hard to handle.`);
+        ? msg('Raise toward {t}%. A drier dough browns evenly instead of spotting.', { t: rec.target })
+        : msg('Come down toward {t}%. Too wet for this setup gives large, pale blisters and a dough that is hard to handle.', { t: rec.target }));
 
   // 2. Fermentation time (maturity)
   const total = r.rt1Hours + (ctx.cold ? r.ctHours : 0) + (ctx.cold || ctx.rt2Counts ? r.rt2Hours : 0);
   let time = band(total, [24, 72], [12, 96]);
   const longWarm = !ctx.cold && total > 16;
   if (longWarm && time === 'good') time = 'ok';
-  add('time', 'Fermentation time', 15, time, `${Math.round(total)} h total${ctx.cold ? '' : ' at room temp'}`,
+  add('time', 'Fermentation time', 15, time, msg(ctx.cold ? '{h} h total' : '{h} h total at room temp', { h: Math.round(total) }),
     longWarm ? 'Over 16 h at room temperature with very little yeast is hard to control: one warm afternoon over-proofs it. Moving most of it into the fridge is more reliable.'
       : time === 'good' ? 'A long, slow ferment breaks down starch and builds the fine bubbles that leopard.'
       : total < 24 ? 'Go to 24–48 h, mostly in the fridge. Young dough gives few, large blisters and a pale rim.'
@@ -76,7 +78,7 @@ export function leopardReport(r, ctx) {
   // 3. Tempering after the fridge
   if (ctx.cold) {
     const temper = band(r.rt2Hours, [3, 6], [2, 8]);
-    add('temper', 'Balls at room temp after the fridge', 12, temper, `${r.rt2Hours} h`,
+    add('temper', 'Balls at room temp after the fridge', 12, temper, msg('{h} h', { h: r.rt2Hours }),
       temper === 'good' ? 'Balls reach about 18–20 °C, so the rim inflates evenly in the oven.'
         : r.rt2Hours < 3 ? 'Give them 3–5 h out of the fridge. Cold balls blister unevenly and stay pale.'
           : 'More than 6 h out risks over-proofing: slack balls tear and lose their spots.');
@@ -84,14 +86,14 @@ export function leopardReport(r, ctx) {
 
   // 4. Oven temperature
   const oven = band(r.ovenTemp, [420, 480], [390, 500]);
-  add('oven', 'Stone temperature', 18, oven, `${Math.round(r.ovenTemp)} °C`,
+  add('oven', 'Stone temperature', 18, oven, msg('{t} °C', { t: Math.round(r.ovenTemp) }),
     oven === 'good' ? 'Hot enough to char the bubble tips before the rest of the rim colours.'
       : r.ovenTemp < 420 ? 'Launch on a stone at 420–480 °C (measure it with an IR thermometer). Cooler stones brown the rim evenly instead of spotting it.'
         : 'Above 480 °C the base and tips burn before the crumb sets. Let the stone drop a little, or launch on a cooler spot.');
 
   // 5. Bake time
   const bake = band(r.bakeSeconds, [60, 100], [45, 120]);
-  add('bake', 'Bake time', 8, bake, `${r.bakeSeconds} s`,
+  add('bake', 'Bake time', 8, bake, msg('{s} s', { s: r.bakeSeconds }),
     bake === 'good' ? 'Short and fierce: spots form and the inside stays soft.'
       : r.bakeSeconds < 60 ? 'Under 60 s often leaves raw dough under the spots. Bake a bit cooler and longer.'
         : 'A long bake dries the rim and turns spots into an even tan. Bake hotter and shorter.');
@@ -100,7 +102,7 @@ export function leopardReport(r, ctx) {
   const sugarOn = ctx.sugar && (r.sugar || 0) > 0;
   const fatOn = ctx.fats && (r.fat || 0) > 0;
   const sf = sugarOn ? 'bad' : (fatOn ? 'ok' : 'good');
-  add('sugarfat', 'Sugar and oil', 10, sf, sugarOn ? `${r.sugar}% sugar` : (fatOn ? `${r.fat}% oil` : 'none'),
+  add('sugarfat', 'Sugar and oil', 10, sf, sugarOn ? msg('{v}% sugar', { v: r.sugar }) : (fatOn ? msg('{v}% oil', { v: r.fat }) : 'none'),
     sf === 'good' ? 'A plain flour, water, salt and yeast dough leopards best.'
       : sugarOn ? 'Remove sugar and malt. They brown the whole rim at these temperatures and hide the spots.'
         : 'Oil softens the crust and evens out browning. Leave it out for maximum leoparding.');
@@ -108,9 +110,9 @@ export function leopardReport(r, ctx) {
   // 7. Flour strength for the fermentation length
   const need = flourStrengthFor(total);
   const w = r.flourW >= need && r.flourW <= need + 90 ? 'good' : (r.flourW >= need - 30 && r.flourW <= need + 130 ? 'ok' : 'bad');
-  add('flour', 'Flour strength', 12, w, `W ${r.flourW} (aim ${need}+)`,
+  add('flour', 'Flour strength', 12, w, msg('W {w} (aim {need}+)', { w: r.flourW, need }),
     w === 'good' ? 'Strong enough to hold gas through the whole ferment.'
-      : r.flourW < need ? `For ${Math.round(total)} h use a flour around W ${need}–${need + 40} (about 12.5–13.5% protein).`
+      : r.flourW < need ? msg('For {h} h use a flour around W {a}–{b} (about 12.5–13.5% protein).', { h: Math.round(total), a: need, b: need + 40 })
         : 'This flour is stronger than the ferment needs, so the rim may be tight and chewy. Ferment longer or blend in a softer flour.');
 
   // 8. Pre-ferment (contemporary style)
@@ -123,12 +125,12 @@ export function leopardReport(r, ctx) {
 
   // 9. Salt
   const salt = band(r.salt, [2.5, 3.2], [2, 3.6]);
-  add('salt', 'Salt', 3, salt, `${r.salt}%`,
+  add('salt', 'Salt', 3, salt, msg('{v}%', { v: r.salt }),
     salt === 'good' ? 'Normal salt keeps fermentation steady and the gluten firm.' : 'Keep salt at 2.5–3.2% of the flour.');
 
   // 10. Room temperature
   const rt = band(r.rtTemp, [18, 23], [15, 26]);
-  add('rt', 'Room temperature', 2, rt, `${Math.round(r.rtTemp)} °C`,
+  add('rt', 'Room temperature', 2, rt, msg('{t} °C', { t: Math.round(r.rtTemp) }),
     rt === 'good' ? 'A steady 18–23 °C keeps the ferment predictable.' : 'Aim for 18–23 °C, or adjust the hours to match your kitchen.');
 
   const max = items.reduce((a, i) => a + i.weight, 0);

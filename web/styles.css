@@ -352,3 +352,26 @@ label.row { cursor: pointer; }
 .recipe ol, .method ol { padding-left: 20px; margin: 8px 0 0; display: grid; gap: 6px; }
 .recipe .btn { margin-top: 12px; }
 .method .btn { margin-top: 10px; }
+
+/* Find & import */
+.find .links { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.find .links .btn { font-size: .88rem; }
+.import { display: grid; gap: 10px; }
+.imp-table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.imp-table td { padding: 6px 0; border-top: 1px solid var(--line); }
+.imp-table td:nth-child(2), .imp-table td:nth-child(3) { text-align: right; padding-left: 12px; }
+.wide-note { grid-column: 1 / -1; margin: 0; }
+#btn-theme svg { width: 20px; height: 20px; }
+
+/* Style intro */
+.style-intro { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 14px 16px; }
+.style-intro > summary { list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; }
+.style-intro > summary::-webkit-details-marker { display: none; }
+.style-intro > summary::after { content: "–"; color: var(--muted); font-weight: 700; }
+.style-intro:not([open]) > summary::after { content: "+"; }
+.style-intro h2 { margin: 0; font-size: 1.3rem; }
+.style-intro p { margin: 6px 0 10px; color: var(--muted); max-width: 65ch; }
+.traits { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.traits li { padding: 4px 10px; border-radius: 99px; background: var(--surface-2); font-size: .82rem; font-weight: 600; }
+
+.nocase { text-transform: none; letter-spacing: .02em; }

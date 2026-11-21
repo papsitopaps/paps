@@ -1,7 +1,7 @@
 // Offline cache: serve app files from cache, refresh them in the background.
-const CACHE = 'impasto-v6';
+const CACHE = 'prozimi-v1';
 const FILES = [
-  './', 'index.html', 'styles.css', 'app.js', 'engine.js', 'glossary.js', 'leopard.js', 'bakelog.js', 'planner.js', 'recipes.js', 'manifest.webmanifest',
+  './', 'index.html', 'styles.css', 'app.js', 'engine.js', 'glossary.js', 'leopard.js', 'bakelog.js', 'planner.js', 'recipes.js', 'presets.js', 'i18n.js', 'importer.js', 'locales/el.js', 'locales/es.js', 'locales/ja.js', 'manifest.webmanifest',
   'favicon.ico', 'apple-touch-icon.png', 'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png',
 ];
 

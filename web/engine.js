@@ -1,4 +1,4 @@
-// Impasto dough engine — pure functions, no DOM.
+// Prozimi dough engine — pure functions, no DOM.
 // Temperatures in °C. Percentages are baker's percentages (relative to total flour,
 // including flour carried in by levain, pre-ferments and old dough).
 // Every model and constant is explained in docs/formulas.md.
@@ -134,7 +134,7 @@ export function computeDough(r, s) {
   const blend = s.floursCount > 1 ? r.flours.slice(0, s.floursCount) : [{ name: 'Flour', pct: 100 }];
   const flours = blend.map(f => ({ name: f.name, pct: f.pct, grams: Math.max(flour, 0) * f.pct / 100 }));
   const pctSum = blend.reduce((a, f) => a + Number(f.pct), 0);
-  if (Math.abs(pctSum - 100) > 0.01) warnings.push(`The flour blend adds up to ${pctSum}%, not 100%.`);
+  if (Math.abs(pctSum - 100) > 0.01) warnings.push({ k: 'The flour blend adds up to {v}%, not 100%.', p: { v: pctSum } });
 
   // Hours of room-temperature fermentation that hand-set yeast supports.
   let yeastHours = null;

@@ -2,7 +2,7 @@
 
 Code: `web/planner.js`. Tests: `tests/planner.test.mjs`.
 
-Enter **when you can start** (now, by default) and **when you want to bake**. Impasto then works out how many hours there are between the two.
+Enter **when you can start** (now, by default) and **when you want to bake**. Prozimi then works out how many hours there are between the two.
 
 ## Working out the time
 
@@ -12,6 +12,7 @@ Enter **when you can start** (now, by default) and **when you want to bake**. Im
 | Style | Room temp only (total) | Cold plan: before fridge / fridge / after fridge | Ideal fridge |
 |---|---|---|---|
 | Neapolitan | 4–24 h | 2 h / 10–72 h / 4 h | 24–48 h |
+| Detroit | 4–16 h (incl. 2.5 h in the pan) | 1.5 h / 12–96 h / 2.5 h | 24–72 h |
 | Contemporary | 6–24 h (incl. 3 h balls) | 2 h / 10–72 h / 4 h | 24–48 h |
 | Roman pan | 6–24 h | 2 h / 12–96 h / 3 h | 24–72 h |
 | Focaccia | 3–16 h | 1 h / 8–72 h / 2.5 h | 18–48 h |

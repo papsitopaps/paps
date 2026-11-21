@@ -1,7 +1,7 @@
 {
-  "name": "Impasto — Dough Calculator",
-  "short_name": "Impasto",
-  "description": "Dough calculator for Neapolitan and contemporary pizza, focaccia, baguettes and sourdough bread.",
+  "name": "Prozimi — Dough Calculator",
+  "short_name": "Prozimi",
+  "description": "Dough calculator for Neapolitan, contemporary and Detroit pizza, focaccia, baguettes and sourdough bread.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

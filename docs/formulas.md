@@ -1,4 +1,4 @@
-# Impasto formulas
+# Prozimi formulas
 
 Everything lives in `web/engine.js`, and every formula is covered by `tests/engine.test.mjs`.
 Notation:
