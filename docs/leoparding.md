@@ -49,7 +49,7 @@ The coach lists the biggest gaps first.
 
 ## Ovens
 
-The default oven is a gas **Ooni Koda 16**, which reaches about 500 °C. Defaults for it:
+Impasto is aimed at home pizza ovens that reach about 500 °C, for example an Ooni Koda or a Gozney Roccbox or Dome. The default oven is a generic **gas pizza oven (up to 500 °C)**:
 
 | Style | Stone temperature | Bake time |
 |---|---|---|
@@ -60,11 +60,11 @@ Other presets (Settings → Pizza oven):
 
 | Oven | Neapolitan | Contemporary |
 |---|---|---|
-| Wood-fired | 470 °C, 70 s | 450 °C, 80 s |
+| Wood or pellet | 470 °C, 70 s | 450 °C, 80 s |
 | Electric | 400 °C, 100 s | 400 °C, 110 s |
 | Home oven with steel or stone | 290 °C, 300 s | 290 °C, 330 s |
 
-Choosing an oven sets these values and adds technique tips for it. For the Koda: preheat 25–30 min, give a quarter turn every 15–20 s for the L-shaped burner, and use high flame early then medium.
+Choosing an oven sets these values and adds technique tips for it. For gas ovens: preheat 25–30 min, give a quarter turn every 15–20 s because the flame comes from one side, and use high flame early then medium.
 
 ## Hydration advisor
 
