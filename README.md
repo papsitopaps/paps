@@ -15,6 +15,7 @@ How the numbers are worked out is in [`docs/formulas.md`](docs/formulas.md) and 
 ## Features
 
 - **Styles:** Neapolitan, Contemporary (canotto), Detroit, Roman pan, Focaccia, Baguette and Sourdough loaf. Each has a short description and its main characteristics at the top, plus its own defaults and fermentation stages.
+- **Pizza and pan size:** the ball weight shows the pizza diameter it makes (in cm and inches), or the pan size it fills for Detroit, Roman pan and focaccia. One-tap buttons set the weight for common sizes (e.g. 30 cm / 12″, or a 25 × 35 cm / 10 × 14″ Detroit pan).
 - **Amounts:** pieces × weight, two piece sizes, wastage, and a blend of up to 3 flours that always adds up to 100%.
 - **Ingredients:** water, salt, oil/fat, sugar/malt.
 - **Fermentation:** room temperature plus fridge (CT) hours, with the yeast amount following time and temperature.

@@ -603,4 +603,9 @@ export default {
   "{t} °C oven: a 2–3 min bake dries the rim, so contemporary dough needs about 72–76%": "{t} °Cのオーブン：2〜3分焼くと縁が乾くので、加水は約72〜76%に",
   "{t} °C stone: a slightly longer bake keeps the canotto rim soft at 70–74%": "石床{t} °C：焼成がやや長いので、加水70〜74%でカノットの縁を柔らかく保ちます",
   "{t} °C stone: contemporary dough usually sits at 68–72% at this heat": "石床{t} °C：この温度ではコンテンポラリー生地の加水率は通常68〜72%です",
+  "Makes a pizza about {cm} cm ({inch} in) across": "直径約{cm} cm（{inch}インチ）のピザになります",
+  "Fills a pan of about {w} × {l} cm ({wi} × {li} in)": "約{w}×{l} cm（{wi}×{li}インチ）の型に合う量です",
+  "Dough for a pizza of:": "ピザのサイズから:",
+  "Dough for a pan of:": "型のサイズから:",
+  "Weight set to {g} g": "重さを{g} gにしました",
 };

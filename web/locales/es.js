@@ -603,4 +603,9 @@ export default {
   "{t} °C oven: a 2–3 min bake dries the rim, so contemporary dough needs about 72–76%": "Horno a {t} °C: un horneado de 2–3 min seca el borde, así que la masa contemporánea necesita un 72–76 % aprox.",
   "{t} °C stone: a slightly longer bake keeps the canotto rim soft at 70–74%": "Piedra a {t} °C: con un horneado algo más largo, el 70–74 % mantiene tierno el canotto",
   "{t} °C stone: contemporary dough usually sits at 68–72% at this heat": "Piedra a {t} °C: a este calor la masa contemporánea suele ir al 68–72 %",
+  "Makes a pizza about {cm} cm ({inch} in) across": "Da una pizza de unos {cm} cm ({inch} in) de diámetro",
+  "Fills a pan of about {w} × {l} cm ({wi} × {li} in)": "Llena un molde de unos {w} × {l} cm ({wi} × {li} in)",
+  "Dough for a pizza of:": "Masa para una pizza de:",
+  "Dough for a pan of:": "Masa para un molde de:",
+  "Weight set to {g} g": "Peso fijado en {g} g",
 };
