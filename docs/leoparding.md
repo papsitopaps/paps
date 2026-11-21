@@ -13,7 +13,7 @@ To get them you need all of the following:
 |---|---|
 | Mature dough (long, mostly cold ferment) | It fills the dough with many fine surface bubbles. Young dough gives a few big blisters and a pale rim. |
 | Enough water | Steam inflates the rim and the bubble tips. Too much water gives large pale blisters. |
-| Very hot, fast bake (430–485 °C, 60–100 s) | It chars the bubble tips before the whole rim colours. Cooler ovens brown evenly. |
+| Very hot, fast bake (stone 420–480 °C, 60–100 s) | It chars the bubble tips before the whole rim colours. Cooler ovens brown evenly. |
 | No sugar or malt, little or no oil | Sugars brown the whole surface (Maillard reaction and caramelisation), so the spots disappear. |
 | Balls tempered to room temp | Cold balls inflate unevenly and stay pale. |
 | Flour strong enough for the ferment length | Weak gluten can't hold the gas, so the rim collapses or tears. |
@@ -28,7 +28,7 @@ Each factor is rated good (1), ok (0.5) or bad (0), and weighted:
 | Hydration | 15 | advisor range | ±3 pts |
 | Fermentation time | 15 | 24–72 h | 12–96 h |
 | Tempering after the fridge | 12 | 3–6 h | 2–8 h |
-| Oven | 18 | 430–485 °C | 400–510 °C |
+| Stone temperature (IR thermometer) | 18 | 420–480 °C | 390–500 °C |
 | Bake time | 8 | 60–100 s | 45–120 s |
 | Sugar and oil | 10 | none | oil only |
 | Flour strength | 12 | W ≥ 220 + 2·hours (and not much stronger) | 30 below to 130 above that |
@@ -46,6 +46,25 @@ The score is the weighted percentage. Grades:
 | < 45 | Unlikely to leopard |
 
 The coach lists the biggest gaps first.
+
+## Ovens
+
+The default oven is a gas **Ooni Koda 16**, which reaches about 500 °C. Defaults for it:
+
+| Style | Stone temperature | Bake time |
+|---|---|---|
+| Neapolitan | 450 °C | 75 s |
+| Contemporary | 440 °C | 85 s |
+
+Other presets (Settings → Pizza oven):
+
+| Oven | Neapolitan | Contemporary |
+|---|---|---|
+| Wood-fired | 470 °C, 70 s | 450 °C, 80 s |
+| Electric | 400 °C, 100 s | 400 °C, 110 s |
+| Home oven with steel or stone | 290 °C, 300 s | 290 °C, 330 s |
+
+Choosing an oven sets these values and adds technique tips for it. For the Koda: preheat 25–30 min, give a quarter turn every 15–20 s for the L-shaped burner, and use high flame early then medium.
 
 ## Hydration advisor
 
