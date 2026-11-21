@@ -119,7 +119,11 @@ main { max-width: 1160px; margin: 0 auto; padding: 16px max(16px, env(safe-area-
 .inputs { display: grid; gap: 22px; min-width: 0; }
 .eyebrow { margin: 0 0 10px; font: 700 .74rem/1.2 var(--font-body); letter-spacing: .09em; text-transform: uppercase; color: var(--muted); display: flex; align-items: center; gap: 6px; }
 .eyebrow svg { width: 14px; height: 14px; }
-.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 210px), 1fr)); gap: 10px; align-items: start; }
+/* Inputs come in pairs (count + weight, water + salt, time + temperature), so use two columns;
+   a leftover last tile spans the row instead of sitting alone. One column on phones. */
+.tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; align-items: start; }
+.tiles > :last-child:nth-child(odd) { grid-column: 1 / -1; }
+@media (max-width: 520px) { .tiles { grid-template-columns: minmax(0, 1fr); } }
 
 .tile {
   background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md);
@@ -326,7 +330,9 @@ label.row { cursor: pointer; }
 /* Bake planner */
 .planner h4 { margin: 14px 0 0; font-size: .95rem; }
 .plan-inputs { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr)); gap: 10px; }
-.plan-inputs label { display: grid; gap: 4px; font-size: .82rem; font-weight: 500; color: var(--muted); }
+.plan-inputs { align-items: start; }
+.plan-inputs label { display: grid; gap: 4px; font-size: .82rem; font-weight: 500; color: var(--muted); min-width: 0; }
+.plan-inputs input { min-width: 0; }
 .plan-inputs input { width: 100%; color: var(--ink); }
 .plan-inputs small { font-size: .75rem; margin-top: -2px; }
 .plan-inputs small:empty { display: none; }
