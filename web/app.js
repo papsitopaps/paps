@@ -316,7 +316,7 @@ function render() {
   applyTheme();
 }
 
-const PAGE_TITLES = { settings: 'Settings', tools: 'Tools', sourdough: 'Sourdough lab', glossary: 'Glossary', about: 'About', open: 'Saved recipes', help: 'How to use' };
+const PAGE_TITLES = { settings: 'Settings', tools: 'Tools', sourdough: 'Sourdough lab', glossary: 'Glossary', about: 'About', open: 'Saved recipes', shared: 'Share', help: 'How to use' };
 
 const toggleRow = (key, label, hint = '') => `<div class="row"><span>${esc(label)}</span>
   <label class="switch"><input type="checkbox" data-setting="${key}" ${S()[key] ? 'checked' : ''} aria-label="${esc(label)}"><span></span></label>${hint ? `<span class="hint">${esc(hint)}</span>` : ''}</div>`;
@@ -393,6 +393,8 @@ const PAGES = {
     </div>`;
   },
 
+  shared: () => `<p>Copy this text to share the recipe:</p><textarea id="share-text" rows="10" style="width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--surface)" aria-label="Recipe to share"></textarea>`,
+
   glossary: () => `<dl class="gloss">${GLOSSARY.map(([t, d]) => `<dt>${esc(t)}</dt><dd>${esc(d)}</dd>`).join('')}</dl>`,
 
   about: () => `<p><b>Impasto ${VERSION}</b> works out dough ingredients for pizza, focaccia, baguettes and sourdough bread. It suggests how much yeast or levain to use for the time and temperature you choose.</p>
@@ -412,8 +414,11 @@ const PAGES = {
 
   open: () => {
     const list = savedList();
-    if (!list.length) return `<p class="note">No saved recipes yet. Use <b>Save</b> in the menu.</p>`;
-    return `<div class="list">${list.map((it, i) => `<div class="row"><span><b>${esc(it.name)}</b><br><span class="note">${esc(STYLES[it.style]?.name || '')} · ${new Date(it.at).toLocaleDateString()}</span></span>
+    const form = `<form class="list" id="save-form" style="margin-bottom:16px"><div class="row">
+      <input type="text" id="save-name" aria-label="Recipe name" value="${esc(`${ST().name} ${new Date().toLocaleDateString()}`)}" style="flex:1;max-width:none">
+      <button class="btn" type="submit">Save current recipe</button></div></form>`;
+    if (!list.length) return `${form}<p class="note">No saved recipes yet.</p>`;
+    return `${form}<div class="list">${list.map((it, i) => `<div class="row"><span><b>${esc(it.name)}</b><br><span class="note">${esc(STYLES[it.style]?.name || '')} · ${new Date(it.at).toLocaleDateString()}</span></span>
       <span><button class="btn" data-load="${i}">Open</button> <button class="btn danger" data-del="${i}" aria-label="Delete ${esc(it.name)}">Delete</button></span></div>`).join('')}</div>`;
   },
 };
@@ -481,7 +486,7 @@ async function share() {
     if (navigator.share) { await navigator.share({ title: 'Impasto recipe', text, url }); return; }
   } catch (e) { if (e.name === 'AbortError') return; }
   try { await navigator.clipboard.writeText(`${text}\n${url}`); toast('Recipe and link copied'); }
-  catch { prompt('Copy this link', url); }
+  catch { view = 'shared'; render(); const ta = $('#share-text'); ta.value = `${text}\n${url}`; ta.focus(); ta.select(); }
 }
 
 // ---------- Events ----------
@@ -502,13 +507,13 @@ document.addEventListener('click', e => {
   if (t.id === 'tp-use') { R().ballWeight = Number($('#tp-out').dataset.g) || R().ballWeight; persist(); view = 'calc'; render(); toast('Weight applied'); return; }
   const act = t.dataset.act;
   if (act === 'save') {
-    menu.hidden = true;
-    const name = prompt('Name this recipe', `${ST().name} ${new Date().toLocaleDateString()}`);
-    if (!name) return;
-    const l = savedList(); l.unshift({ name, style: state.style, at: Date.now(), data: encodeRecipe() }); setSaved(l);
-    $('#saved-count').textContent = l.length; toast('Saved');
+    menu.hidden = true; view = 'open'; render();
+    const n = $('#save-name'); n.focus(); n.select();
   } else if (act === 'share') { menu.hidden = true; share(); }
-  else if (act === 'reset') { if (confirm(`Reset ${ST().name} to its defaults?`)) { state.recipes[state.style] = freshRecipe(state.style); persist(); render(); toast('Reset'); } }
+  else if (act === 'reset') {
+    if (t.dataset.armed) { state.recipes[state.style] = freshRecipe(state.style); persist(); render(); toast(`${ST().name} reset to defaults`); }
+    else { t.dataset.armed = '1'; t.textContent = `Tap again to reset ${ST().name}`; setTimeout(() => { if (t.isConnected) { delete t.dataset.armed; t.textContent = `Reset ${ST().name} to defaults`; } }, 4000); }
+  }
 });
 
 document.addEventListener('pointerdown', e => {
@@ -530,6 +535,14 @@ document.addEventListener('keydown', e => {
   const inp = e.target.closest?.('.stepper input');
   if (inp && (e.key === 'ArrowUp' || e.key === 'ArrowDown') && inp.dataset.key) { e.preventDefault(); bump(inp.dataset.key, e.key === 'ArrowUp' ? 1 : -1); }
   if (e.key === 'Escape') { $('#menu').hidden = true; }
+});
+
+document.addEventListener('submit', e => {
+  if (e.target.id !== 'save-form') return;
+  e.preventDefault();
+  const name = $('#save-name').value.trim() || ST().name;
+  const l = savedList(); l.unshift({ name, style: state.style, at: Date.now(), data: encodeRecipe() }); setSaved(l);
+  render(); toast(`Saved “${name}”`);
 });
 
 document.addEventListener('focusin', e => { if (e.target.matches('.stepper input')) e.target.select(); });
