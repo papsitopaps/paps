@@ -1,12 +1,12 @@
-// Glossary entries, written for Impasto.
+// Glossary entries (English message keys, translated with t()).
 export const GLOSSARY = [
   ['Baker\'s percentage', 'Each ingredient is given as a percentage of the total flour weight. 1000 g flour at 65% water means 650 g water.'],
   ['Hydration', 'Water as a percentage of flour. Higher hydration gives a more open, softer crumb but stickier dough.'],
-  ['CY — fresh (compressed) yeast', 'Moist blocks of Saccharomyces cerevisiae, about 70% water. The reference yeast in Impasto: dry yeasts are converted from it.'],
+  ['CY — fresh (compressed) yeast', 'Moist blocks of Saccharomyces cerevisiae, about 70% water. The reference yeast in Prozimi: dry yeasts are converted from it.'],
   ['ADY — active dry yeast', 'Granulated dried yeast, best dissolved in lukewarm water first. Use about 40% of the fresh-yeast weight.'],
   ['IDY — instant dry yeast', 'Fine dried yeast that can go straight into the flour. Use about a third of the fresh-yeast weight.'],
   ['Sourdough starter', 'A culture of wild yeasts and lactic-acid bacteria kept alive with regular feeds of flour and water.'],
-  ['Levain', 'A portion of starter fed specifically for one bake and used at its peak. Impasto counts its flour and water as part of the dough.'],
+  ['Levain', 'A portion of starter fed specifically for one bake and used at its peak. Prozimi counts its flour and water as part of the dough.'],
   ['LSD — liquid sourdough', 'A starter kept at about 100% hydration (equal flour and water). Milder, more lactic flavour.'],
   ['FSD — firm sourdough', 'A starter kept at about 50% hydration. Slower and more acetic, and holds well in warm kitchens.'],
   ['Inoculation', 'How much levain goes into the dough, as a percentage of flour. More inoculation means faster fermentation.'],
@@ -26,6 +26,8 @@ export const GLOSSARY = [
   ['Cornicione', 'The raised rim of a Neapolitan pizza.'],
   ['Contemporary Neapolitan (canotto)', 'A modern style with a very puffy, airy rim. It uses higher hydration (about 68–78%), long cold fermentation and often a poolish or biga.'],
   ['Neapolitan', 'Soft pizza dough at about 58–65% water, hand-stretched thin with a puffy rim, baked very hot (450–485 °C) for about 60–90 seconds.'],
+  ['Detroit style', 'A thick, airy rectangular pizza baked in an oiled steel pan, with cheese right to the edges for a crisp, caramelised cheese crust, and the sauce on top.'],
+  ['Frico', 'The crisp, caramelised cheese edge that forms where cheese melts against a hot pan.'],
   ['Roman pan (pala / teglia)', 'Very wet dough (75–90%) with a long cold rise, baked in an oiled rectangular pan for a crisp base and an airy crumb.'],
   ['Focaccia', 'Oiled, dimpled flatbread at about 70–85% water, proofed and baked in a tray.'],
   ['Baguette', 'Lean French bread at about 65–75% water, often made with a poolish, shaped into long thin loaves and baked with steam.'],

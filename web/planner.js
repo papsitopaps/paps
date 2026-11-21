@@ -6,6 +6,7 @@
 //  cold: rt1 before the fridge, rt2 after it, fridge between ctMin and ctMax, ideally within ideal[]
 export const PLAN_RULES = {
   neapolitan:   { rt: { rt2: 0, min: 4, max: 24 },  cold: { rt1: 2, rt2: 4, ctMin: 10, ideal: [24, 48], ctMax: 72 } },
+  detroit:      { rt: { rt2: 2.5, min: 4, max: 16 }, cold: { rt1: 1.5, rt2: 2.5, ctMin: 12, ideal: [24, 72], ctMax: 96 } },
   contemporary: { rt: { rt2: 3, min: 6, max: 24 },  cold: { rt1: 2, rt2: 4, ctMin: 10, ideal: [24, 48], ctMax: 72 } },
   roman:        { rt: { rt2: 3, min: 6, max: 24 },  cold: { rt1: 2, rt2: 3, ctMin: 12, ideal: [24, 72], ctMax: 96 } },
   focaccia:     { rt: { rt2: 2, min: 3, max: 16 },  cold: { rt1: 1, rt2: 2.5, ctMin: 8, ideal: [18, 48], ctMax: 72 } },
@@ -14,6 +15,8 @@ export const PLAN_RULES = {
 };
 
 const r1 = h => Math.round(h * 2) / 2; // half-hour steps
+// Message object: English key with {placeholders}, translated by the UI (see i18n.js).
+const msg = (k, p) => (p ? { k, p } : k);
 
 /**
  * @param style  key of PLAN_RULES
@@ -40,7 +43,7 @@ export function recommendPlans({ style, hours, lead = 0, prep = 0.5 }) {
       id: 'cold', title: inIdeal ? 'Long cold ferment' : 'Short cold ferment',
       why: inIdeal
         ? 'Best flavour, extensibility and leoparding. Most of the work happens slowly in the fridge.'
-        : `Fits your window, but ${c.ideal[0]}–${c.ideal[1]} h in the fridge would give more flavour and colour.`,
+        : msg('Fits your window, but {a}–{b} h in the fridge would give more flavour and colour.', { a: c.ideal[0], b: c.ideal[1] }),
       rt1Hours: c.rt1, ctHours: ct, rt2Hours: c.rt2, delay, quality: inIdeal ? 3 : 2,
     });
   }
@@ -67,7 +70,7 @@ export function recommendPlans({ style, hours, lead = 0, prep = 0.5 }) {
       id: 'rushed', title: 'Rushed same-day dough',
       why: 'Very short. The yeast goes up a lot, so expect less flavour and a paler rim. Keep the dough warm (24–26 °C).',
       rt1Hours: r1(Math.max(1, A - rt2)), ctHours: 0, rt2Hours: r1(rt2), delay: 0, quality: 1,
-      warning: `Less than ${t.min} h: if you can, bake later or start earlier.`,
+      warning: msg('Less than {h} h: if you can, bake later or start earlier.', { h: t.min }),
     });
   }
 

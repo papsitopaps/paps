@@ -3,13 +3,13 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Impasto Dough Calculator</title>
-  <meta name="description" content="Dough calculator for Neapolitan and contemporary pizza, focaccia, baguettes and sourdough: yeast, hydration, leoparding coach and bake log.">
+  <title>Prozimi</title>
+  <meta name="description" content="Dough calculator for Neapolitan, contemporary and Detroit pizza, focaccia, baguettes and sourdough: yeast, hydration, leoparding coach, bake planner and bake log. In English, Greek, Spanish and Japanese.">
   <meta name="theme-color" content="#f4f5f3" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#0e1011" media="(prefers-color-scheme: dark)">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-title" content="Impasto">
+  <meta name="apple-mobile-web-app-title" content="Prozimi">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
@@ -22,36 +22,23 @@
 </head>
 <body>
   <header class="topbar">
-    <a href="#" id="brand" class="brand" aria-label="Impasto calculator">
-      <img src="icons/icon.svg" alt="" width="30" height="30"><span>Impasto</span>
+    <a href="#" id="brand" class="brand" aria-label="Prozimi">
+      <img src="icons/icon.svg" alt="" width="30" height="30"><span>Prozimi</span>
     </a>
     <span id="page-title" class="page-title"></span>
     <div class="bar-actions">
-      <button class="icon-btn text" id="btn-log" data-go="log" aria-label="Bake log"></button>
-      <button class="icon-btn" id="btn-menu" aria-label="Menu" aria-expanded="false" aria-controls="menu"></button>
+      <button class="icon-btn" id="btn-theme" type="button"></button>
+      <button class="icon-btn text" id="btn-log" data-go="log"></button>
+      <button class="icon-btn" id="btn-menu" aria-expanded="false" aria-controls="menu"></button>
     </div>
-    <nav class="menu" id="menu" hidden>
-      <button data-go="log">Bake log</button>
-      <button data-go="library">Recipe library</button>
-      <button data-go="open">Saved recipes <span class="badge" id="saved-count">0</span></button>
-      <button data-act="save">Save recipe</button>
-      <button data-act="share">Share recipe</button>
-      <hr>
-      <button data-go="settings">Settings</button>
-      <button data-go="tools">Tools</button>
-      <button data-go="sourdough">Sourdough lab</button>
-      <hr>
-      <button data-go="glossary">Glossary</button>
-      <button data-go="help">How to use</button>
-      <button data-go="about">About</button>
-    </nav>
+    <nav class="menu" id="menu" hidden></nav>
   </header>
 
-  <nav class="tabs" id="tabs" role="tablist" aria-label="Dough style"></nav>
+  <nav class="tabs" id="tabs" role="tablist"></nav>
 
   <main id="view"></main>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <noscript>Impasto needs JavaScript to calculate.</noscript>
+  <noscript>Prozimi needs JavaScript to calculate.</noscript>
 </body>
 </html>

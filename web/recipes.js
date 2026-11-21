@@ -1,4 +1,5 @@
-// Built-in recipe library. Each entry loads into the calculator: `style` picks the tab,
+// Built-in recipe library. Strings are English message keys, translated with t().
+// Each entry loads into the calculator: `style` picks the tab,
 // `r` overrides the style's defaults, `s` switches on the settings it needs.
 // Method steps are paraphrased; anything the source did not state is listed under `assumed`.
 
@@ -50,5 +51,28 @@ export const LIBRARY = [
       'Rest 2 h at room temperature, portion into trays, then refrigerate 18 h at 6–8 °C.',
     ],
     assumed: ['2 trays of about 1.94 kg', '2 h proof in the tray before baking'],
+  },
+  {
+    id: 'detroit-classic',
+    name: 'Detroit-style pan pizza',
+    style: 'detroit',
+    source: 'Prozimi starting formula',
+    summary: '2 pans of 25 × 35 cm (10 × 14 in) · 70% water · 2.2% salt · 2% oil · 24 h cold rise · home oven',
+    r: {
+      balls: 2, ballWeight: 520, hydration: 70, salt: 2.2, fat: 2,
+      rt1Hours: 1.5, ctHours: 24, ctTemp: 4, rt2Hours: 2.5, rtTemp: 22,
+      yeastType: 'IDY', yeastManual: false,
+    },
+    s: { fats: true, ct: true },
+    method: [
+      'Mix flour, water, yeast and salt, then add the oil. Knead until smooth (6–8 min by machine). Bread flour with about 12–13% protein works well.',
+      'Rest 1–2 h at room temperature, then refrigerate about 24 h (up to 72 h for more flavour).',
+      'Grease each 25 × 35 cm (10 × 14 in) steel pan generously with oil or soft butter. Press the dough towards the corners; if it springs back, wait 15–20 min and press again.',
+      'Proof in the pan, covered, for 2–3 h until puffy and almost doubled.',
+      'Cover right to the edges with cubed brick cheese (or low-moisture mozzarella mixed with Monterey Jack), so it melts down the sides into a crisp, caramelised cheese crust. Put pepperoni under the cheese if you like.',
+      'Bake on the lowest rack at 260–290 °C for 12–15 min, until the edges are dark brown. Run a spatula around the edge and lift the pizza out straight away.',
+      'Finish with two or three stripes of warm tomato sauce on top.',
+    ],
+    assumed: [],
   },
 ];
