@@ -603,4 +603,9 @@ export default {
   "{t} °C oven: a 2–3 min bake dries the rim, so contemporary dough needs about 72–76%": "Φούρνος {t} °C: ψήσιμο 2–3 λεπτών στεγνώνει το κράσπεδο, άρα η σύγχρονη ζύμη θέλει περίπου 72–76%",
   "{t} °C stone: a slightly longer bake keeps the canotto rim soft at 70–74%": "Πέτρα {t} °C: το λίγο μεγαλύτερο ψήσιμο θέλει 70–74% για μαλακό κράσπεδο canotto",
   "{t} °C stone: contemporary dough usually sits at 68–72% at this heat": "Πέτρα {t} °C: η σύγχρονη ζύμη σε αυτή τη θερμοκρασία είναι συνήθως 68–72%",
+  "Makes a pizza about {cm} cm ({inch} in) across": "Βγάζει πίτσα διαμέτρου περίπου {cm} cm ({inch} ιντσών)",
+  "Fills a pan of about {w} × {l} cm ({wi} × {li} in)": "Γεμίζει ταψί περίπου {w} × {l} cm ({wi} × {li} ίντσες)",
+  "Dough for a pizza of:": "Ζύμη για πίτσα:",
+  "Dough for a pan of:": "Ζύμη για ταψί:",
+  "Weight set to {g} g": "Βάρος: {g} g",
 };

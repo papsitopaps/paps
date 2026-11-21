@@ -7,7 +7,7 @@ import { listBakes, getBake, putBake, deleteBake, importBakes, newId, shrinkPhot
 import { GLOSSARY } from './glossary.js';
 import { recommendPlans, atNight } from './planner.js';
 import { LIBRARY } from './recipes.js';
-import { BASE, STYLES, OVENS, DEFAULT_SETTINGS, rebalanceFlours, normalizeFlours } from './presets.js';
+import { BASE, STYLES, OVENS, DEFAULT_SETTINGS, rebalanceFlours, normalizeFlours, sizeFor, weightFor, inchesOf } from './presets.js';
 import { t, setLang, getLang, detectLang, LANGS } from './i18n.js';
 import { parseRecipe, searchLinks } from './importer.js';
 
@@ -148,7 +148,7 @@ function fieldDefs() {
   const hrs = v => fmtHours(v);
   const out = [{ sub: t('Dough') },
     { key: 'balls', label: t(st.piece), step: 1, min: 1, max: 999, fmt: v => `${v}` },
-    { key: 'ballWeight', label: t(st.weight), step: 5, min: 10, max: 20000, fmt: v => `${v} g` },
+    { key: 'ballWeight', label: t(st.weight), step: 5, min: 10, max: 20000, fmt: v => `${v} g`, sizer: !!st.size },
   ];
   if (s.twoSizes) out.push(
     { key: 'balls2', label: t('{label} · size 2', { label: t(st.piece) }), step: 1, min: 0, max: 999, fmt: v => `${v}` },
@@ -232,7 +232,10 @@ function renderCalc() {
       g.html.push(`<div class="tile"><input type="text" class="flour-name" data-flour-name="${d.flour}" value="${tx(f.name)}" aria-label="${esc(t('Flour {n} name', { n: d.flour + 1 }))}">
         <div class="tile-row"><input class="val" inputmode="decimal" value="${f.pct}%" data-flour="${d.flour}" aria-label="${esc(t('{name} percent', { name: t(f.name) }))}">
         <div class="steps" data-flour="${d.flour}"><button type="button" data-dir="-1" aria-label="${tx('Less')}">${ICON.minus}</button><button type="button" data-dir="1" aria-label="${tx('More')}">${ICON.plus}</button></div></div></div>`);
-    } else g.html.push(tileHTML(d));
+    } else {
+      g.html.push(tileHTML(d));
+      if (d.sizer) g.html.push('<div class="tile wide size-box"><div class="advice" id="size-advice"></div></div>');
+    }
   }
   if (S().floursCount > 1) {
     const blend = groups.find(g => g.title === t('Flour blend'));
@@ -242,6 +245,14 @@ function renderCalc() {
   const st = ST();
   const intro = `<details class="style-intro" open><summary><h2>${tx(st.name)}</h2></summary><p>${tx(st.about)}</p>
     <ul class="traits">${st.traits.map(x => `<li>${tx(x)}</li>`).join('')}</ul></details>`;
+  // Half-width cards sit in pairs; a card left without a partner (before a full-width
+  // item or at the end of a section) stretches across the row.
+  for (const g of groups) {
+    let run = [];
+    const close = () => { if (run.length % 2) g.html[run[run.length - 1]] = g.html[run[run.length - 1]].replace('class="tile"', 'class="tile span"'); run = []; };
+    g.html.forEach((h, i) => { if (/class="tile"/.test(h.slice(0, 40))) run.push(i); else close(); });
+    close();
+  }
   $('#view').innerHTML = `<div class="calc">
     <div class="inputs">${intro}${groups.map(g => `<section class="group" aria-label="${esc(g.title)}"><h2 class="eyebrow">${esc(g.title)}</h2><div class="tiles">${g.html.join('')}</div></section>`).join('')}</div>
     <div class="results" id="results" aria-live="polite"></div></div>`;
@@ -255,6 +266,18 @@ function refreshRanges() {
     const v = valueOf(d);
     i.classList.toggle('ok', v >= d.range[0] && v <= d.range[1]);
     i.classList.toggle('off', !(v >= d.range[0] && v <= d.range[1]));
+  }
+  const sbox = document.getElementById('size-advice');
+  const size = sizeFor(state.style, R().ballWeight);
+  if (sbox && size) {
+    const st = ST();
+    const label = c => Array.isArray(c) ? `${c[0]} × ${c[1]} cm (${inchesOf(c[0])} × ${inchesOf(c[1])}″)` : `${c} cm (${inchesOf(c)}″)`;
+    const now = size.round
+      ? t('Makes a pizza about {cm} cm ({inch} in) across', { cm: size.cm, inch: size.inch })
+      : t('Fills a pan of about {w} × {l} cm ({wi} × {li} in)', { w: size.w, l: size.l, wi: size.wi, li: size.li });
+    sbox.innerHTML = `<span><b>${esc(now)}</b></span>
+      <span class="chips">${size.round ? tx('Dough for a pizza of:') : tx('Dough for a pan of:')} ${st.size.choices.map(c =>
+        `<button type="button" class="chip${weightFor(state.style, c) === R().ballWeight ? ' on' : ''}" data-setsize='${JSON.stringify(c)}'>${esc(label(c))}</button>`).join('')}</span>`;
   }
   const box = document.getElementById('hyd-advice');
   const adv = hydrationAdvice();
@@ -947,6 +970,11 @@ document.addEventListener('click', async e => {
     Object.assign(R(), { rt1Hours: p.rt1Hours, ctHours: p.ctHours, rt2Hours: p.rt2Hours });
     if (!ST().forceCold) S().ct = p.ctHours > 0;
     persist(); renderCalc(); toast(t('Plan applied: {name}', { name: t(p.title) })); return;
+  }
+  if (el.dataset.setsize) {
+    const c = JSON.parse(el.dataset.setsize);
+    setValue('ballWeight', weightFor(state.style, c));
+    toast(t('Weight set to {g} g', { g: R().ballWeight })); return;
   }
   if (el.dataset.sethyd) { setValue('hydration', el.dataset.sethyd); toast(t('Water set to {v}%', { v: el.dataset.sethyd })); return; }
   if (el.dataset.load != null) { const it = savedList()[+el.dataset.load]; if (it && decodeRecipe(it.data)) { go('calc'); toast(t('Opened “{name}”', { name: it.name })); } return; }

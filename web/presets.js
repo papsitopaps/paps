@@ -15,6 +15,7 @@ export const BASE = {
 
 export const STYLES = {
   neapolitan: {
+    size: { round: true, factor: 0.34, choices: [25, 28, 30, 33, 35] },
     about: 'Soft, thin pizza from Naples with a puffy, airy rim (cornicione), baked in 60–90 seconds in a very hot oven.',
     traits: ["Water 58–65%", "Salt 2.5–3%", "Type 00 flour, W 250–300", "Stone 430–485 °C, 60–90 s", "No oil or sugar"],
     name: 'Neapolitan', piece: 'Dough balls', weight: 'Ball weight', rt1: 'RT leavening', rt2: 'Balls at RT after fridge',
@@ -22,6 +23,7 @@ export const STYLES = {
     defaults: { rt2Hours: 4, ovenTemp: 450, bakeSeconds: 75, flourW: 260 },
   },
   contemporary: {
+    size: { round: true, factor: 0.36, choices: [28, 30, 32, 34] },
     about: 'A modern Neapolitan with a tall, open, very light rim (canotto). More water and a longer, mostly cold fermentation, often with a biga or poolish.',
     traits: ["Water 68–78%", "Cold ferment 24–72 h", "Biga or poolish often used", "Flour W 300–340", "Stone 420–460 °C, 70–100 s"],
     name: 'Contemporary', piece: 'Dough balls', weight: 'Ball weight', rt1: 'Bulk at RT', rt2: 'Balls at RT',
@@ -29,6 +31,7 @@ export const STYLES = {
     defaults: { ballWeight: 270, hydration: 70, salt: 2.8, rt1Hours: 2, ctHours: 24, rt2Hours: 4, rtTemp: 21, ovenTemp: 440, bakeSeconds: 85, flourW: 300 },
   },
   detroit: {
+    size: { factor: 0.55, choices: [[20, 25], [25, 35], [30, 40]] },
     about: 'A thick, rectangular pan pizza from Detroit with an airy crumb, cheese baked right to the edges into a crisp caramelised crust, and the sauce on top.',
     traits: ["Water 68–75%", "Oiled steel pan, 25 × 35 cm", "Cheese to the edges (frico)", "Home oven 250–290 °C, 12–15 min"],
     name: 'Detroit', piece: 'Pans', weight: 'Dough per pan', rt1: 'Bulk (RT)', rt2: 'Proof in pan',
@@ -36,6 +39,7 @@ export const STYLES = {
     defaults: { ballWeight: 520, hydration: 70, salt: 2.2, fat: 2, rt1Hours: 2, ctHours: 24, rt2Hours: 2.5, rtTemp: 22, yeastType: 'IDY' },
   },
   roman: {
+    size: { factor: 0.6, choices: [[30, 40], [35, 45], [40, 60]] },
     about: 'Pizza in teglia: a very wet dough with a long cold rise, baked in an oiled rectangular pan for a crisp base and a light, honeycombed crumb. Sold by the slice in Rome.',
     traits: ["Water 75–90%", "Cold rise 24–72 h", "Strong flour, W 300+", "Oiled pan", "250–300 °C, 15–20 min"],
     name: 'Roman pan', piece: 'Pans', weight: 'Dough per pan', rt1: 'RT before fridge', rt2: 'RT after fridge',
@@ -43,6 +47,7 @@ export const STYLES = {
     defaults: { ballWeight: 600, hydration: 80, salt: 2.5, fat: 3, rt1Hours: 2, ctHours: 48, rt2Hours: 3, yeastType: 'IDY' },
   },
   focaccia: {
+    size: { factor: 0.65, choices: [[20, 30], [25, 35], [30, 40]] },
     about: 'Oiled, dimpled flatbread from Liguria, with a crisp, golden base and a soft, open crumb.',
     traits: ["Water 70–85%", "Olive oil in and on the dough", "Proofed in the tray", "220–250 °C, 20–30 min"],
     name: 'Focaccia', piece: 'Trays', weight: 'Dough per tray', rt1: 'Bulk (RT)', rt2: 'Proof in tray',
@@ -128,3 +133,26 @@ export function normalizeFlours(flours, n) {
   if (Math.abs(sum - 100) < 0.01) return flours.map(f => ({ ...f }));
   return rebalanceFlours(flours, n, 0, n === 1 ? 100 : Math.min(100, Number(flours[0].pct) || 100));
 }
+
+// ---------- Pizza and pan size ----------
+// `factor` is dough per area (g/cm²), including the rim: about 0.34 for a classic Neapolitan
+// (250 g → 31 cm), 0.36 for contemporary (285 g → 32 cm), 0.55–0.65 for pan styles.
+export const CM_PER_IN = 2.54;
+const inch = cm => Math.round(cm / CM_PER_IN * 2) / 2;
+
+/** Size a piece of dough makes: { round, cm, inch } for round pizzas, or a 3:4 pan { w, l, wi, li, area }. */
+export function sizeFor(style, grams) {
+  const sz = STYLES[style]?.size; if (!sz || !(grams > 0)) return null;
+  const area = grams / sz.factor;
+  if (sz.round) { const cm = 2 * Math.sqrt(area / Math.PI); return { round: true, cm: Math.round(cm), inch: inch(cm) }; }
+  const w = Math.sqrt(area * 3 / 4), l = Math.sqrt(area * 4 / 3);
+  return { round: false, area: Math.round(area), w: Math.round(w), l: Math.round(l), wi: inch(w), li: inch(l) };
+}
+
+/** Dough weight (g, rounded to 5) for a round pizza of `cm` across, or a pan of [w, l] cm. */
+export function weightFor(style, size) {
+  const sz = STYLES[style]?.size; if (!sz) return null;
+  const area = Array.isArray(size) ? size[0] * size[1] : Math.PI * (size / 2) ** 2;
+  return Math.round(area * sz.factor / 5) * 5;
+}
+export const inchesOf = inch;

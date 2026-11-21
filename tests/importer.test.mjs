@@ -58,3 +58,14 @@ test('flour blend always adds up to 100%', () => {
   assert.equal(sum(rebalanceFlours(base, 2, 1, 150), 2), 100);
   assert.equal(sum(normalizeFlours([{ pct: 50 }, { pct: 30 }, { pct: 20 }], 2), 2), 100);
 });
+
+test('pizza and pan size recommendations', async () => {
+  const { sizeFor, weightFor } = await import('../web/presets.js');
+  assert.deepEqual(sizeFor('neapolitan', 250), { round: true, cm: 31, inch: 12 });
+  assert.equal(sizeFor('contemporary', 285).cm, 32); // the shared recipe: 285 g opens to 31–33 cm
+  assert.equal(weightFor('detroit', [25, 35]), 480);
+  const pan = sizeFor('detroit', 480);
+  assert.ok(Math.abs(pan.w * pan.l - 875) < 60, 'round trip back to about a 25 × 35 cm pan');
+  assert.equal(sizeFor('bread', 900), null);
+  for (const cm of [25, 30, 33]) assert.ok(Math.abs(sizeFor('neapolitan', weightFor('neapolitan', cm)).cm - cm) <= 1);
+});
