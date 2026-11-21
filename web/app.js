@@ -504,8 +504,7 @@ const PAGES = {
     <p>For Neapolitan and Contemporary pizza it also suggests a hydration for your oven, kitchen and flour. A leoparding coach scores your recipe and bake setup.</p>
     <p>The <b>Bake log</b> keeps every bake with its exact recipe, notes, ratings and a photo. Recipes and bakes are stored only on this device. Use <i>Export</i> in the bake log to back them up or move them to another device.</p>
     <p>Install the app with <i>Add to Dock</i> (Safari on macOS), <i>Add to Home Screen</i> (iPhone and iPad), or the install button in Chrome and Edge. It works offline.</p>
-    <p>The yeast, sourdough and leoparding models are informed approximations. Treat the numbers as a starting point and keep notes in the log.</p>
-    <p class="note">An independent project, inspired by dough calculators such as PizzApp+. Not affiliated with NFP Software.</p></div>`,
+    <p>The yeast, sourdough and leoparding models are informed approximations. Treat the numbers as a starting point and keep notes in the log.</p></div>`,
 
   help: () => `<ol class="prose">
     <li>Pick a style at the top.</li>

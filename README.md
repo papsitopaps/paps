@@ -9,8 +9,7 @@ It is an installable web app (PWA), so one codebase runs:
 
 It works offline.
 
-It was built by reverse-engineering the behaviour of [PizzApp+](https://apps.apple.com/app/id1228158792) with the [REA](https://github.com/morluto/rea) black-box workflow, then extending it.
-See [`docs/reverse-engineering.md`](docs/reverse-engineering.md) and [`docs/formulas.md`](docs/formulas.md).
+How the numbers are worked out is in [`docs/formulas.md`](docs/formulas.md) and [`docs/leoparding.md`](docs/leoparding.md).
 
 ## Features
 

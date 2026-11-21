@@ -16,7 +16,7 @@ const near = (a, b, tol, msg) => assert.ok(Math.abs(a - b) <= tol, `${msg}: ${a}
 const sumParts = o => o.flour + o.water + o.salt + o.fat + o.sugar + o.yeast +
   (o.levain?.mass || 0) + (o.preferment?.total || 0) + (o.oldDough?.mass || 0);
 
-test('reproduces the PizzApp+ reference screenshot (250 g, 60%, 3%, 8 h @ 20 °C, CY)', () => {
+test('reference case: 250 g, 60%, 3%, 8 h @ 20 °C, fresh yeast', () => {
   const o = computeDough(base, {});
   assert.equal(Math.round(o.flour), 153);
   assert.equal(Math.round(o.water), 92);

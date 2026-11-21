@@ -34,7 +34,7 @@ The structure is the classic empirical formula for Neapolitan dough:
 - **Salt and fat:** slightly more yeast is needed.
 - **Hydration:** a quadratic term.
 
-`K = 6.6069e5` is calibrated so the PizzApp+ reference case gives 0.497% (0.76 g); see `reverse-engineering.md`.
+`K = 6.6069e5` is calibrated so the reference case (250 g ball, 60% water, 3% salt, 8 h at 20 °C) gives 0.497% (0.76 g).
 The result is clamped to 0.005–5%.
 
 ## 3. Cold fermentation
