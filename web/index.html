@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Impasto Dough Calculator</title>
+  <meta name="description" content="Dough calculator for pizza, focaccia, baguettes and sourdough bread: ingredients, yeast and levain from time and temperature.">
+  <meta name="theme-color" content="#b8432a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Impasto">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="stylesheet" href="styles.css">
+  <script type="module" src="app.js"></script>
+</head>
+<body>
+  <header class="bar">
+    <button class="icon-btn" id="btn-help" aria-label="Help">?</button>
+    <h1 id="title">Impasto</h1>
+    <button class="icon-btn" id="btn-menu" aria-label="Menu" aria-expanded="false">
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    </button>
+    <nav class="menu" id="menu" hidden>
+      <button data-go="open">Open <span class="badge" id="saved-count">0</span></button>
+      <button data-act="save">Save</button>
+      <button data-act="share">Share</button>
+      <hr>
+      <button data-go="settings">Settings</button>
+      <button data-go="tools">Tools</button>
+      <button data-go="sourdough">Sourdough lab</button>
+      <hr>
+      <button data-go="glossary">Glossary</button>
+      <button data-go="about">About</button>
+    </nav>
+  </header>
+
+  <div class="tabs" id="tabs" role="tablist"></div>
+
+  <main id="view"></main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <noscript>Impasto needs JavaScript to calculate.</noscript>
+</body>
+</html>
