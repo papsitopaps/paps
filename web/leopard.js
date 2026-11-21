@@ -24,11 +24,19 @@ const msg = (k, p) => (p ? { k, p } : k);
 export function recommendHydration({ contemporary = false, ovenTemp = 450, roomTemp = 21, flourW = 280, hours = 24 }) {
   const reasons = [];
   let base;
-  if (ovenTemp >= 450) { base = 60; reasons.push(msg('{t} °C oven, a 60–90 s bake: classic AVPN range', { t: Math.round(ovenTemp) })); }
-  else if (ovenTemp >= 400) { base = 63; reasons.push(msg('{t} °C oven: a slightly longer bake, so a little more water', { t: Math.round(ovenTemp) })); }
-  else if (ovenTemp >= 330) { base = 66; reasons.push(msg('{t} °C oven: a 2–3 min bake dries the dough, so more water', { t: Math.round(ovenTemp) })); }
-  else { base = 69; reasons.push(msg('{t} °C home oven: a 5–8 min bake needs a wetter dough to stay soft', { t: Math.round(ovenTemp) })); }
-  if (contemporary) { base += 8; reasons.push('Contemporary style: wetter for a big, airy rim'); }
+  const t = Math.round(ovenTemp);
+  if (contemporary) {
+    // Contemporary (canotto): wetter throughout, for a tall, airy rim.
+    if (ovenTemp >= 450) { base = 70; reasons.push(msg('{t} °C stone: contemporary dough usually sits at 68–72% at this heat', { t })); }
+    else if (ovenTemp >= 400) { base = 72; reasons.push(msg('{t} °C stone: a slightly longer bake keeps the canotto rim soft at 70–74%', { t })); }
+    else if (ovenTemp >= 330) { base = 74; reasons.push(msg('{t} °C oven: a 2–3 min bake dries the rim, so contemporary dough needs about 72–76%', { t })); }
+    else { base = 76; reasons.push(msg('{t} °C home oven: a 5–8 min bake needs a very wet contemporary dough to stay airy', { t })); }
+  } else {
+    if (ovenTemp >= 450) { base = 60; reasons.push(msg('{t} °C oven, a 60–90 s bake: classic AVPN range', { t })); }
+    else if (ovenTemp >= 400) { base = 63; reasons.push(msg('{t} °C oven: a slightly longer bake, so a little more water', { t })); }
+    else if (ovenTemp >= 330) { base = 66; reasons.push(msg('{t} °C oven: a 2–3 min bake dries the dough, so more water', { t })); }
+    else { base = 69; reasons.push(msg('{t} °C home oven: a 5–8 min bake needs a wetter dough to stay soft', { t })); }
+  }
 
   let adj = 0;
   if (roomTemp > 22) { const d = Math.min(3, (roomTemp - 22) * 0.5); adj -= d; reasons.push(msg('Warm kitchen ({t} °C): −{d} pts, as dough slackens faster', { t: Math.round(roomTemp), d: d.toFixed(1) })); }
@@ -141,12 +149,19 @@ export function leopardReport(r, ctx) {
   return { score, grade, items, fixes };
 }
 
-// Technique notes that the numbers can't capture.
+// Technique notes that the numbers can't capture. Third item: styles it applies to (all if omitted).
 export const LEOPARD_TECHNIQUE = [
   ['Bench flour', 'Use as little as possible, and use semolina on the peel. Loose flour on the rim burns black and bitter, and looks like fake leoparding.'],
-  ['Opening the ball', 'Press from the centre outwards to push gas into the rim, and never flatten the cornicione. For the contemporary style, leave a wide border (3–4 cm) untouched.'],
+  ['Opening the ball', 'Press from the centre outwards to push gas into the rim, and never flatten the cornicione.', ['neapolitan']],
+  ['Opening the ball', 'Press only the centre and leave a wide border (3–4 cm) untouched, so the canotto rim keeps all its gas. Stretch gently over your knuckles instead of slapping.', ['contemporary']],
   ['Ball readiness', 'Bake when the ball is relaxed and slightly domed, with small bubbles underneath. Over-proofed balls are slack and pale; under-proofed ones give a few big blisters.'],
   ['Dough skin', 'Keep the balls in airtight trays. A dried-out skin browns evenly instead of spotting.'],
-  ['Floor and flame', 'Launch onto a stone at about 420–460 °C with a strong flame. Turn after 20–30 s. At the end, lift the pizza toward the dome for a few seconds to set the spots.'],
-  ['Flour choice', 'Use a 00 flour with about 12.5–13.5% protein. Swapping in 10–20% type 1 or wholemeal adds enzymes and colour.'],
+  ['Floor and flame', 'Launch onto a stone at about 430–480 °C with a strong flame. Turn after 20–30 s. At the end, lift the pizza toward the dome for a few seconds to set the spots.', ['neapolitan']],
+  ['Floor and flame', 'Launch onto a stone at about 420–450 °C. Keep the flame strong while the rim inflates, then lower it so the thick canotto rim bakes through before the spots burn.', ['contemporary']],
+  ['Flour choice', 'Use a 00 flour with about 12.5–13.5% protein. Swapping in 10–20% type 1 or wholemeal adds enzymes and colour.', ['neapolitan']],
+  ['Flour choice', 'Use a strong 00 or a blend around W 300–340 so the wet dough holds its gas. Adding 10–20% type 1 or wheat germ to the final mix adds flavour and colour.', ['contemporary']],
+  ['Pre-ferment', 'A biga (about 45% water) or a poolish for 30–50% of the flour gives the light, open canotto rim. Use it at its peak, not over-ripe.', ['contemporary']],
 ];
+
+/** Technique tips for one style: [title, text] pairs. */
+export const techniqueFor = style => LEOPARD_TECHNIQUE.filter(([, , only]) => !only || only.includes(style)).map(([a, b]) => [a, b]);

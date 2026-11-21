@@ -68,23 +68,29 @@ Choosing an oven sets these values and adds technique tips for it. For gas ovens
 
 ## Hydration advisor
 
-The baseline is the AVPN guideline for true Neapolitan pizza: about 1 L of water per 1.7–1.8 kg of flour (56–59%), baked in a wood oven at about 485 °C for 60–90 s.
+The advice is specific to the style.
 
-| Oven | Base hydration |
-|---|---|
-| ≥ 450 °C | 60% |
-| 400–449 °C | 63% |
-| 330–399 °C | 66% |
-| home oven | 69% |
+**Neapolitan (classic).** The baseline is the AVPN guideline for true Neapolitan pizza: about 1 L of water per 1.7–1.8 kg of flour (56–59%), baked in a wood oven at about 485 °C for 60–90 s.
 
+| Oven | Neapolitan base | Contemporary base |
+|---|---|---|
+| ≥ 450 °C | 60% | 70% |
+| 400–449 °C | 63% | 72% |
+| 330–399 °C | 66% | 74% |
+| home oven | 69% | 76% |
+
+**Contemporary (canotto)** has its own table: the tall, airy rim needs much more water at every oven temperature.
 Hotter ovens bake faster, so the dough loses less water and needs less.
 
-Adjustments:
+Adjustments (both styles):
 
-- **Contemporary style:** +8 pts.
 - **Warm kitchen:** −0.5 pt per °C above 22 °C (at most −3).
 - **Cool kitchen:** +0.5 pt per °C below 18 °C (at most +2).
 - **Flour strength:** −3 below W 240, −1 for W 240–279, +2 above W 330.
 - **Long ferment:** −1 over 48 h.
 
 The recommended range is the target ±2 pts.
+
+## Technique tips
+
+Tips are shown only for the style you are working on. Neapolitan and Contemporary each have their own advice on opening the ball, floor and flame, and flour choice. Contemporary also gets pre-ferment advice. The oven tips follow the same rule.

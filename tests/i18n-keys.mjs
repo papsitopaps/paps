@@ -34,6 +34,7 @@ for (const r of LIBRARY) { add(r.name); add(r.summary); add(r.source); r.method.
 GLOSSARY.forEach(([a, b]) => { add(a); add(b); });
 LEOPARD_TECHNIQUE.forEach(([a, b]) => { add(a); add(b); });
 searchLinks('x', 'y').forEach(l => add(l.name));
+for (const o of Object.values(OVENS)) o.tips.forEach(([a, b]) => { add(a); add(b); });
 
 // 3. Messages produced at runtime by the pure modules, over a grid of inputs.
 const r0 = { ...BASE, sugar: 0, fat: 0, flours: [{ name: 'A', pct: 100 }] };

@@ -1,5 +1,34 @@
 // Bake log storage: IndexedDB (room for photos), with a localStorage fallback.
-const DB = 'impasto', STORE = 'bakes', LS_KEY = 'impasto:bakes:v1';
+const DB = 'prozimi', STORE = 'bakes', LS_KEY = 'prozimi:bakes:v1';
+// Names used before the app was renamed; their data is moved over once.
+const OLD_DB = 'impasto', OLD_LS_KEY = 'impasto:bakes:v1';
+
+// Copy bakes from the old database (if it exists) into `db`, then delete the old one.
+function migrateOld(db) {
+  return new Promise(resolve => {
+    try {
+      const old = localStorage.getItem(OLD_LS_KEY);
+      if (old != null) { if (localStorage.getItem(LS_KEY) == null) localStorage.setItem(LS_KEY, old); localStorage.removeItem(OLD_LS_KEY); }
+    } catch {}
+    let req;
+    try { req = indexedDB.open(OLD_DB, 1); } catch { resolve(); return; }
+    let existed = true;
+    req.onupgradeneeded = () => { existed = false; req.transaction.abort(); };
+    req.onerror = () => { resolve(); };
+    req.onsuccess = () => {
+      const odb = req.result;
+      if (!existed || !odb.objectStoreNames.contains(STORE)) { odb.close(); resolve(); return; }
+      const all = odb.transaction(STORE).objectStore(STORE).getAll();
+      all.onsuccess = () => {
+        const tx = db.transaction(STORE, 'readwrite');
+        for (const b of all.result) tx.objectStore(STORE).put(b);
+        tx.oncomplete = () => { odb.close(); indexedDB.deleteDatabase(OLD_DB); resolve(); };
+        tx.onerror = () => { odb.close(); resolve(); };
+      };
+      all.onerror = () => { odb.close(); resolve(); };
+    };
+  });
+}
 
 let dbPromise = null;
 function openDb() {
@@ -8,7 +37,7 @@ function openDb() {
     dbPromise = new Promise((resolve, reject) => {
       const req = indexedDB.open(DB, 1);
       req.onupgradeneeded = () => req.result.createObjectStore(STORE, { keyPath: 'id' });
-      req.onsuccess = () => resolve(req.result);
+      req.onsuccess = () => migrateOld(req.result).then(() => resolve(req.result));
       req.onerror = () => reject(req.error);
     }).catch(e => { dbPromise = null; throw e; });
   }
