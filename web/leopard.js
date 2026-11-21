@@ -64,9 +64,12 @@ export function leopardReport(r, ctx) {
 
   // 2. Fermentation time (maturity)
   const total = r.rt1Hours + (ctx.cold ? r.ctHours : 0) + (ctx.cold || ctx.rt2Counts ? r.rt2Hours : 0);
-  const time = band(total, [24, 72], [12, 96]);
-  add('time', 'Fermentation time', 15, time, `${Math.round(total)} h total`,
-    time === 'good' ? 'A long, slow ferment breaks down starch and builds the fine bubbles that leopard.'
+  let time = band(total, [24, 72], [12, 96]);
+  const longWarm = !ctx.cold && total > 16;
+  if (longWarm && time === 'good') time = 'ok';
+  add('time', 'Fermentation time', 15, time, `${Math.round(total)} h total${ctx.cold ? '' : ' at room temp'}`,
+    longWarm ? 'Over 16 h at room temperature with very little yeast is hard to control: one warm afternoon over-proofs it. Moving most of it into the fridge is more reliable.'
+      : time === 'good' ? 'A long, slow ferment breaks down starch and builds the fine bubbles that leopard.'
       : total < 24 ? 'Go to 24–48 h, mostly in the fridge. Young dough gives few, large blisters and a pale rim.'
         : 'Over 72 h the gluten weakens and the rim can tear or go flat. Shorten it, or use a stronger flour.');
 
