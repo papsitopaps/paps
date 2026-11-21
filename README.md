@@ -1,1 +1,47 @@
-# paps
+# Impasto — dough calculator
+
+A dough calculator for **pizza (Neapolitan, Roman pan), focaccia, baguettes and sourdough bread**.
+It is an installable web app (PWA), so one codebase runs:
+
+- **in the browser**
+- **on macOS**: Safari → File → *Add to Dock*, or Chrome → *Install*
+- **on iPhone and iPad**: Share → *Add to Home Screen*
+
+It works offline.
+
+It was built by reverse-engineering the behaviour of [PizzApp+](https://apps.apple.com/app/id1228158792) with the [REA](https://github.com/morluto/rea) black-box workflow, then extending it.
+See [`docs/reverse-engineering.md`](docs/reverse-engineering.md) and [`docs/formulas.md`](docs/formulas.md).
+
+## Features
+
+- **Styles:** Neapolitan, Roman pan, Focaccia, Baguette and Sourdough loaf, each with its own defaults and fermentation stages.
+- **Amounts:** pieces × weight, two piece sizes, wastage, and a blend of up to 3 flours.
+- **Ingredients:** water, salt, oil/fat, sugar/malt.
+- **Fermentation:** room temperature plus fridge (CT) hours, with the yeast amount following time and temperature.
+- **Leaveners:** fresh, active dry and instant yeast, plus firm and liquid sourdough with adjustable starter hydration.
+  - Levain can be set automatically or by hand, and then shows the hours it supports.
+- **Pre-ferments and old dough:** poolish, biga, and old dough in or out.
+- **Bake planner:** pick a bake time and get the start time of each step.
+- **Sourdough lab:** levain build (ratio, hydration, time to peak), bulk fermentation estimate with aliquot-jar target, and starter hydration converter.
+- **Tools:** yeast converter, dough weight for a pan, and water temperature for a target dough temperature.
+- **Recipes:** save, open and share as a link.
+- **Display:** °C/°F, light/dark theme, keep screen on, glossary.
+
+## Run
+
+```bash
+npm start
+```
+
+Then open http://localhost:8080.
+
+## Test
+
+```bash
+npm test
+```
+
+## Deploy
+
+`.github/workflows/pages.yml` publishes `web/` to GitHub Pages on every push to `main`.
+Enable it in the repository under **Settings → Pages → Source: GitHub Actions**.
