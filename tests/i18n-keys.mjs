@@ -9,6 +9,7 @@ import { LIBRARY } from '../web/recipes.js';
 import { GLOSSARY } from '../web/glossary.js';
 import { STYLES, OVENS, BASE } from '../web/presets.js';
 import { searchLinks } from '../web/importer.js';
+import { FLOURS } from '../web/flours.js';
 
 const keys = new Map(); // key -> placeholder names
 const add = m => {
@@ -34,6 +35,8 @@ for (const r of LIBRARY) { add(r.name); add(r.summary); add(r.source); r.method.
 GLOSSARY.forEach(([a, b]) => { add(a); add(b); });
 LEOPARD_TECHNIQUE.forEach(([a, b]) => { add(a); add(b); });
 searchLinks('x', 'y').forEach(l => add(l.name));
+FLOURS.filter(f => f.group === 'Common types').forEach(f => add(f.name));
+['Common types', 'Brands', 'My flours', 'Not fed yet', 'Rising', 'At peak: use it now', 'Past peak', 'Hungry: feed it'].forEach(add);
 for (const o of Object.values(OVENS)) o.tips.forEach(([a, b]) => { add(a); add(b); });
 
 // 3. Messages produced at runtime by the pure modules, over a grid of inputs.

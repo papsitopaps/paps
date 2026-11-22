@@ -11,6 +11,7 @@ import { BASE, STYLES, OVENS, DEFAULT_SETTINGS, rebalanceFlours, normalizeFlours
 import { t, setLang, getLang, detectLang, LANGS } from './i18n.js';
 import { parseRecipe, searchLinks } from './importer.js';
 import { timeSteps, completeStep, currentStep, buildIcs, countdown, waterFor, MIXERS } from './bakemode.js';
+import { FLOURS, STYLE_FLOUR, flourById, strengthOf, blendInfo, newStarter, feedStarter, peakOf, starterStatus } from './flours.js';
 
 const APP = 'Prozimi';
 const VERSION = '1.2';
@@ -27,7 +28,7 @@ function migrateKey(key) {
 migrateKey(STORE_KEY); migrateKey(SAVED_KEY);
 
 const freshRecipe = (key, oven = (state?.settings?.oven || 'gas')) =>
-  structuredClone({ ...BASE, ...STYLES[key].defaults, ...(OVENS[oven]?.presets[key] || {}) });
+  structuredClone({ ...BASE, flourIds: [STYLE_FLOUR[key] || null, null, null], starterId: null, ...STYLES[key].defaults, ...(OVENS[oven]?.presets[key] || {}) });
 
 // ---------- State ----------
 let state = load() || { style: 'neapolitan', recipes: {}, settings: { ...DEFAULT_SETTINGS } };
@@ -40,6 +41,8 @@ for (const k of Object.keys(STYLES)) {
   state.recipes[k].flours = normalizeFlours(state.recipes[k].flours, state.settings.floursCount);
 }
 if (!STYLES[state.style]) state.style = 'neapolitan';
+state.myFlours ||= [];
+state.starters ||= [];
 let view = 'calc';
 let logId = null;      // bake being viewed or edited
 let logDraft = null;   // unsaved bake in the editor
@@ -162,6 +165,8 @@ function fieldDefs() {
   if (s.fats || st.forceFat) out.push({ key: 'fat', label: t(st.fatLabel || 'Fat / oil'), step: 0.5, min: 0, max: 20, fmt: v => `${round(v, 1)}%` });
   if (s.sugar) out.push({ key: 'sugar', label: t('Sugar / malt'), step: 0.5, min: 0, max: 20, fmt: v => `${round(v, 1)}%` });
 
+  if (s.floursCount <= 1) out.push({ flourPick: true });
+
   out.push({ sub: t('Fermentation') });
   out.push({ key: 'rt1Hours', label: t(st.rt1), step: 1, min: 1, max: 72, fmt: hrs }, temp('rtTemp', t('Room temp'), 1, 40));
   if (cold) out.push({ key: 'ctHours', label: t('Fridge'), step: 1, min: 0, max: 120, fmt: hrs }, temp('ctTemp', t('Fridge temp'), 1, 12));
@@ -175,6 +180,7 @@ function fieldDefs() {
     if (r.yeastManual) out.push({ key: 'yeastPct', label: t('Yeast · % of flour ({type})', { type: lv.short }), step: 0.05, min: 0.01, max: 5, fmt: v => `${round(v, 2)}%` });
   }
   if (lv.sourdough) {
+    out.push({ starterPick: true });
     out.push({ key: 'starterHydration', label: t('Starter hydration'), step: 5, min: 40, max: 200, fmt: v => `${v}%` });
     out.push({ toggle: 'levainManual', label: t('Set levain by hand') });
     if (r.levainManual) out.push({ key: 'levainPct', label: t('Levain · % of flour'), step: 1, min: 1, max: 60, fmt: v => `${v}%` });
@@ -230,9 +236,12 @@ function renderCalc() {
       <span class="hint">${tx(LEAVENERS[r.yeastType].label)}</span></div>`);
     else if (d.toggle) g.html.push(`<label class="tile wide switch-row"><span>${esc(d.label)}</span>
       <span class="switch"><input type="checkbox" data-rtoggle="${d.toggle}" ${r[d.toggle] ? 'checked' : ''}><span></span></span></label>`);
+    else if (d.flourPick) g.html.push(`<div class="tile wide flour-pick"><label for="fp-0" class="label">${tx('Flour')}</label>${flourSelectHTML(0)}${flourInfoHTML()}</div>`);
+    else if (d.starterPick) g.html.push(starterPickHTML());
     else if (d.flour != null) {
       const f = r.flours[d.flour];
-      g.html.push(`<div class="tile"><input type="text" class="flour-name" data-flour-name="${d.flour}" value="${tx(f.name)}" aria-label="${esc(t('Flour {n} name', { n: d.flour + 1 }))}">
+      const picked = (r.flourIds || [])[d.flour];
+      g.html.push(`<div class="tile">${flourSelectHTML(d.flour)}${picked ? '' : `<input type="text" class="flour-name" data-flour-name="${d.flour}" value="${tx(f.name)}" aria-label="${esc(t('Flour {n} name', { n: d.flour + 1 }))}">`}
         <div class="tile-row"><input class="val" inputmode="decimal" value="${f.pct}%" data-flour="${d.flour}" aria-label="${esc(t('{name} percent', { name: t(f.name) }))}">
         <div class="steps" data-flour="${d.flour}"><button type="button" data-dir="-1" aria-label="${tx('Less')}">${ICON.minus}</button><button type="button" data-dir="1" aria-label="${tx('More')}">${ICON.plus}</button></div></div></div>`);
     } else {
@@ -243,6 +252,7 @@ function renderCalc() {
   if (S().floursCount > 1) {
     const blend = groups.find(g => g.title === t('Flour blend'));
     const total = r.flours.slice(0, S().floursCount).reduce((x, f) => x + Number(f.pct), 0);
+    if (blend) blend.html.push(`<div class="tile wide flour-pick">${flourInfoHTML()}</div>`);
     if (blend) blend.html.push(`<p class="hint wide-note"><b class="${Math.abs(total - 100) < 0.01 ? 'ok-text' : 'warn'}">${esc(t('Total: {v}%', { v: round(total, 1) }))}</b> · ${tx('The blend always adds up to 100%: changing one flour adjusts the others.')}</p>`);
   }
   const st = ST();
@@ -261,6 +271,58 @@ function renderCalc() {
     <div class="results" id="results" aria-live="polite"></div></div>`;
   refreshRanges();
   renderResults();
+}
+
+// ---------- Flours & starters in the calculator ----------
+const allFlours = () => [...FLOURS, ...state.myFlours];
+function flourSelectHTML(i) {
+  const id = (R().flourIds || [])[i] || '';
+  const groups = [['Common types', FLOURS.filter(f => f.group === 'Common types')], ['Brands', FLOURS.filter(f => f.group === 'Brands')], ['My flours', state.myFlours]];
+  return `<select id="fp-${i}" class="flour-select" data-flour-pick="${i}" aria-label="${esc(t('Flour {n}', { n: i + 1 }))}">
+    ${groups.filter(([, list]) => list.length).map(([g, list]) => `<optgroup label="${tx(g)}">${list.map(f => `<option value="${esc(f.id)}" ${f.id === id ? 'selected' : ''}>${tx(f.name)}</option>`).join('')}</optgroup>`).join('')}
+    <option value="" ${id ? '' : 'selected'}>${tx('Other (type a name)')}</option></select>`;
+}
+function currentBlend(r = R(), s = S()) {
+  const n = Math.max(1, s.floursCount);
+  return r.flours.slice(0, n).map((f, i) => ({ flour: flourById((r.flourIds || [])[i], state.myFlours), pct: n === 1 ? 100 : Number(f.pct) }));
+}
+function flourInfoHTML() {
+  const r = R(), blend = currentBlend();
+  const info = blendInfo(blend);
+  if (!info) return `<p class="hint">${tx('Pick a flour to fill in its strength and typical water.')}</p>`;
+  const single = blend.length === 1 ? blend[0].flour : null;
+  const protein = single ? (single.protein[0] === single.protein[1] ? `${single.protein[0]}` : `${single.protein[0]}–${single.protein[1]}`) : null;
+  const parts = [`${info.estimated ? '≈ ' : ''}W ${info.W}`, protein ? t('{p}% protein', { p: protein }) : null, t('usually {a}–{b}% water', { a: info.water[0], b: info.water[1] })].filter(Boolean);
+  const off = r.hydration < info.water[0] - 1 || r.hydration > info.water[1] + 1;
+  return `<p class="hint flour-info">${esc(parts.join(' · '))}${blend.length > 1 ? ` <span class="muted">(${tx('blend average')})</span>` : ''}</p>
+    ${off ? `<p class="hint warn-text">${esc(t('Your water ({v}%) is outside the usual range for this flour.', { v: r.hydration }))}</p>` : ''}
+    <p class="hint muted">${tx('Typical values: check the bag, batches vary.')}</p>`;
+}
+function pickFlour(i, id) {
+  const r = R();
+  r.flourIds = [...(r.flourIds || [null, null, null])];
+  r.flourIds[i] = id || null;
+  const f = flourById(id, state.myFlours);
+  if (f) r.flours[i].name = f.name;
+  const info = blendInfo(currentBlend());
+  if (info) r.flourW = info.W;
+  persist(); renderCalc();
+}
+const STATUS_TEXT = { unfed: 'Not fed yet', rising: 'Rising', peak: 'At peak: use it now', past: 'Past peak', hungry: 'Hungry: feed it' };
+function starterStatusText(st) {
+  const s = starterStatus(st, Date.now());
+  if (s.state === 'unfed') return t(STATUS_TEXT.unfed);
+  const when = s.state === 'rising' ? t('peak about {when}', { when: fmtWhen(new Date(s.peak)) }) : t('fed {h} ago', { h: fmtHours(s.hoursSinceFeed) });
+  return `${t(STATUS_TEXT[s.state])} · ${when}`;
+}
+function starterPickHTML() {
+  const r = R();
+  const list = state.starters;
+  const cur = list.find(x => x.id === r.starterId);
+  return `<div class="tile wide flour-pick"><label for="sp" class="label">${tx('Starter')}</label>
+    <select id="sp" data-starter-pick>${list.map(x => `<option value="${esc(x.id)}" ${x.id === r.starterId ? 'selected' : ''}>${esc(x.name)} · ${x.hydration}%</option>`).join('')}
+      <option value="" ${cur ? '' : 'selected'}>${list.length ? tx('No saved starter') : tx('No starters yet')}</option></select>
+    <p class="hint">${cur ? `<span class="st-${starterStatus(cur, Date.now()).state}">${esc(starterStatusText(cur))}</span>` : `<a href="#" data-go="sourdough">${tx('Save your starters in the Sourdough lab')}</a>`}</p></div>`;
 }
 
 function refreshRanges() {
@@ -513,7 +575,12 @@ function bump(key, dir) {
   if (d.temp) { const c = R()[key] + dir * (S().unit === 'F' ? 5 / 9 : 1) * (key === 'ovenTemp' ? 5 : 1); setValue(key, toDisp(c)); }
   else setValue(key, valueOf(d) + dir * d.step);
 }
-function setFlour(i, pct) { R().flours = rebalanceFlours(R().flours, S().floursCount, i, pct); persist(); renderCalc(); }
+function setFlour(i, pct) {
+  R().flours = rebalanceFlours(R().flours, S().floursCount, i, pct);
+  const info = blendInfo(currentBlend());
+  if (info) R().flourW = info.W;
+  persist(); renderCalc();
+}
 const bumpFlour = (i, dir) => setFlour(i, R().flours[i].pct + dir * 5);
 
 let holdTimer = null;
@@ -524,7 +591,7 @@ document.addEventListener('pointercancel', stopHold);
 // ---------- Views ----------
 const pageTitle = v => ({
   settings: t('Settings'), tools: t('Tools'), sourdough: t('Sourdough lab'), glossary: t('Glossary'), about: t('About'),
-  open: t('Saved recipes'), library: t('Recipe library'), shared: t('Share'), help: t('How to use'),
+  open: t('Saved recipes'), library: t('Recipe library'), flours: t('Flour library'), shared: t('Share'), help: t('How to use'),
   log: t('Bake log'), 'log-edit': t('Log a bake'), 'log-detail': t('Bake'), bake: t('Bake mode'),
 }[v] || '');
 
@@ -538,6 +605,7 @@ function renderChrome() {
   $('#menu').innerHTML = `${state.session ? `<button data-go="bake"><b>${tx('Bake in progress')}</b></button><hr>` : ''}
     <button data-go="log">${tx('Bake log')}</button>
     <button data-go="library">${tx('Recipe library')}</button>
+    <button data-go="flours">${tx('Flour library')}</button>
     <button data-go="open">${tx('Saved recipes')} <span class="badge">${savedList().length}</span></button>
     <button data-act="save">${tx('Save recipe')}</button>
     <button data-act="share">${tx('Share recipe')}</button>
@@ -623,12 +691,27 @@ const PAGES = {
   sourdough: () => {
     const out = computeDough(calcInput(), S());
     const target = out.levain ? Math.ceil(out.levain.mass * 1.1) : 100;
-    return `<p class="note">${tx('Tools for working with a starter. The levain target is your current recipe levain plus 10%, to allow for what sticks to the jar.')}</p>
+    const cur = state.starters.find(x => x.id === R().starterId) || state.starters[0];
+    const starters = state.starters.map(x => {
+      const stt = starterStatus(x, Date.now());
+      return `<div class="row starter-row"><span><b>${esc(x.name)}</b> <span class="chip-s st-${stt.state}">${esc(starterStatusText(x))}</span>
+          <small>${esc(t('{h}% hydration · feeds {a}:{b}:{c}', { h: x.hydration, a: x.ratio[0], b: x.ratio[1], c: x.ratio[2] }))}${x.feedings.length ? ` · ${esc(t('{n} feedings logged', { n: x.feedings.length }))}` : ''}</small></span>
+        <span class="btns"><button class="btn primary" data-feed="${esc(x.id)}">${tx('Fed now')}</button>${stt.peak && stt.peak > Date.now() ? `<button class="btn" data-peak-ics="${esc(x.id)}">${tx('Peak reminder')}</button>` : ''}<button class="btn danger" data-del-starter="${esc(x.id)}">${tx('Delete')}</button></span></div>`;
+    }).join('');
+    return `<h3>${tx('My starters')}</h3>
+    ${starters ? `<div class="list">${starters}</div>` : `<p class="note">${tx('Save each starter you keep, with its hydration and usual feeding ratio. Log feedings to see when it will peak.')}</p>`}
+    <form id="starter-form" class="list">
+      <div class="row"><label for="ns-name">${tx('Name')}</label><input type="text" id="ns-name" class="grow" required placeholder="${tx('e.g. Rye starter')}"></div>
+      <div class="row"><label for="ns-h">${tx('Starter hydration (%)')}</label><input type="number" id="ns-h" value="100" min="40" max="200"></div>
+      <div class="row"><span>${tx('Ratio starter : flour : water')}</span><span><input type="number" id="ns-a" value="1" class="narrow" aria-label="${tx('Starter part')}"> : <input type="number" id="ns-b" value="2" class="narrow" aria-label="${tx('Flour part')}"> : <input type="number" id="ns-c" value="2" class="narrow" aria-label="${tx('Water part')}"></span></div>
+      <div class="row"><button class="btn primary" type="submit">${tx('Add starter')}</button></div>
+    </form>
+    <p class="note">${tx('Tools for working with a starter. The levain target is your current recipe levain plus 10%, to allow for what sticks to the jar.')}</p>
     <h3>${tx('Levain build')}</h3>
     <div class="list">
       <div class="row"><label for="lb-t">${tx('Levain needed (g)')}</label><input type="number" id="lb-t" value="${target}"></div>
-      <div class="row"><span>${tx('Ratio starter : flour : water')}</span><span><input type="number" id="lb-a" value="1" class="narrow" aria-label="${tx('Starter part')}"> : <input type="number" id="lb-b" value="2" class="narrow" aria-label="${tx('Flour part')}"> : <input type="number" id="lb-c" value="2" class="narrow" aria-label="${tx('Water part')}"></span></div>
-      <div class="row"><label for="lb-h">${tx('Starter hydration (%)')}</label><input type="number" id="lb-h" value="100"></div>
+      <div class="row"><span>${tx('Ratio starter : flour : water')}</span><span><input type="number" id="lb-a" value="${cur ? cur.ratio[0] : 1}" class="narrow" aria-label="${tx('Starter part')}"> : <input type="number" id="lb-b" value="${cur ? cur.ratio[1] : 2}" class="narrow" aria-label="${tx('Flour part')}"> : <input type="number" id="lb-c" value="${cur ? cur.ratio[2] : 2}" class="narrow" aria-label="${tx('Water part')}"></span></div>
+      <div class="row"><label for="lb-h">${tx('Starter hydration (%)')}</label><input type="number" id="lb-h" value="${cur ? cur.hydration : 100}"></div>
       <div class="row"><label for="lb-temp">${tx('Kitchen temp')} (${tUnit()})</label><input type="number" id="lb-temp" value="${Math.round(toDisp(R().rtTemp))}"></div>
       <div class="row block"><table id="lb-out"></table></div>
     </div>
@@ -646,6 +729,26 @@ const PAGES = {
       <div class="row"><label for="sc-t">${tx('To (%)')}</label><input type="number" id="sc-t" value="50"></div>
       <div class="row"><span>${tx('Add')}</span><span class="tool-out" id="sc-out"></span></div>
     </div>`;
+  },
+
+  flours: () => {
+    const row = f => {
+      const s = strengthOf(f);
+      const protein = f.protein[0] === f.protein[1] ? `${f.protein[0]}` : `${f.protein[0]}–${f.protein[1]}`;
+      return `<div class="row flour-row"><span><b>${tx(f.name)}</b><small>${esc([s ? `${s.estimated ? '≈ ' : ''}W ${f.W ? (f.W[0] === f.W[1] ? f.W[0] : `${f.W[0]}–${f.W[1]}`) : s.W}` : '', t('{p}% protein', { p: protein }), t('usually {a}–{b}% water', { a: f.water[0], b: f.water[1] })].filter(Boolean).join(' · '))}</small></span>
+        ${f.custom ? `<button class="btn danger" data-del-flour="${esc(f.id)}">${tx('Delete')}</button>` : ''}</div>`;
+    };
+    return `<p class="note">${tx('Pick a flour in the calculator to fill in its strength (W) for the hydration advice and the leoparding coach. Values are typical: check the bag, batches vary. W marked ≈ is estimated from protein.')}</p>
+      <h3>${tx('Common types')}</h3><div class="list">${FLOURS.filter(f => f.group === 'Common types').map(row).join('')}</div>
+      <h3>${tx('Brands')}</h3><div class="list">${FLOURS.filter(f => f.group === 'Brands').map(row).join('')}</div>
+      <h3>${tx('My flours')}</h3>${state.myFlours.length ? `<div class="list">${state.myFlours.map(row).join('')}</div>` : `<p class="note">${tx('Add the flours you use, with the numbers printed on the bag.')}</p>`}
+      <form id="flour-form" class="list">
+        <div class="row"><label for="mf-name">${tx('Name')}</label><input type="text" id="mf-name" class="grow" required placeholder="${tx('e.g. Caputo Nuvola')}"></div>
+        <div class="row"><label for="mf-p">${tx('Protein (%)')}</label><input type="number" id="mf-p" step="0.1" min="5" max="20" required></div>
+        <div class="row"><label for="mf-w">${tx('Strength W (if on the bag)')}</label><input type="number" id="mf-w" step="10" min="100" max="450"></div>
+        <div class="row"><span>${tx('Usual water (%)')}</span><span><input type="number" id="mf-w1" class="narrow" value="60" aria-label="${tx('From (%)')}"> – <input type="number" id="mf-w2" class="narrow" value="70" aria-label="${tx('To (%)')}"></span></div>
+        <div class="row"><button class="btn primary" type="submit">${tx('Add flour')}</button></div>
+      </form>`;
   },
 
   glossary: () => `<dl class="gloss">${GLOSSARY.map(([a, b]) => `<dt>${tx(a)}</dt><dd>${tx(b)}</dd>`).join('')}</dl>`,
@@ -882,6 +985,10 @@ function recipeFacts(b) {
   else if (s.biga) facts.push([t('Biga'), t('{pct}% of flour at {hyd}% water, {time}', { pct: r.bigaPct, hyd: r.bigaHydration, time: at(r.bigaHours ?? 16, r.bigaTemp ?? 18) })]);
   if (r.yeastManual && !lv.sourdough) facts.push([t('Yeast (set by hand)'), `${r.yeastPct}% ${lv.short}`]);
   if (r.recipeName) facts.unshift([t('Recipe'), t(r.recipeName)]);
+  const flour1 = s.floursCount > 1 ? null : flourById((r.flourIds || [])[0], state.myFlours);
+  if (flour1) facts.push([t('Flour'), t(flour1.name)]);
+  const starter = lv.sourdough && state.starters.find(x => x.id === r.starterId);
+  if (starter) facts.push([t('Starter'), starter.name]);
   if (s.floursCount > 1) facts.push([t('Flour blend'), r.flours.slice(0, s.floursCount).map(f => `${t(f.name)} ${f.pct}%`).join(', ')]);
   if (st.pizza) facts.push([t('Oven (planned)'), tempStr(r.ovenTemp)], [t('Bake time'), fmtSec(r.bakeSeconds)], [t('Flour strength'), `W ${r.flourW}`]);
   return facts;
@@ -1091,6 +1198,25 @@ document.addEventListener('click', async e => {
     const r = { ...freshRecipe(tpl.style), ...tpl.r, method: tpl.method, source: tpl.source, recipeName: tpl.name, templateId: tpl.id };
     applyRecipe(tpl.style, r, s); go('calc'); toast(t('Loaded “{name}”', { name: t(tpl.name) })); return;
   }
+  if (el.dataset.feed) {
+    state.starters = state.starters.map(x => x.id === el.dataset.feed ? feedStarter(x, { at: Date.now(), temp: R().rtTemp }) : x);
+    const fed = state.starters.find(x => x.id === el.dataset.feed);
+    persist(); render(); toast(t('Feeding logged: peak about {when}', { when: fmtWhen(new Date(peakOf(fed.feedings[0]))) })); return;
+  }
+  if (el.dataset.peakIcs) {
+    const x = state.starters.find(s => s.id === el.dataset.peakIcs); if (!x?.feedings[0]) return;
+    const ics = buildIcs([{ label: t('{name} at peak', { name: x.name }), hours: 1, start: peakOf(x.feedings[0]) }], { title: 'Prozimi', uid: `${x.id}-${x.feedings[0].at}` });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([ics], { type: 'text/calendar' })); a.download = 'prozimi-starter-peak.ics';
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    toast(t('Calendar file ready: open it to add the steps')); return;
+  }
+  if (el.dataset.delFlour) { state.myFlours = state.myFlours.filter(f => f.id !== el.dataset.delFlour); persist(); render(); return; }
+  if (el.dataset.delStarter) {
+    if (!el.dataset.armed) { const label = el.textContent; el.dataset.armed = '1'; el.textContent = t('Tap again to delete'); setTimeout(() => { if (el.isConnected) { delete el.dataset.armed; el.textContent = label; } }, 4000); return; }
+    state.starters = state.starters.filter(x => x.id !== el.dataset.delStarter);
+    for (const r of Object.values(state.recipes)) if (r.starterId === el.dataset.delStarter) r.starterId = null;
+    persist(); render(); toast(t('Starter deleted')); return;
+  }
   if (el.dataset.openBake) { logId = el.dataset.openBake; go('log-detail'); return; }
   if (el.id === 'tp-use') { R().ballWeight = Number($('#tp-out').dataset.g) || R().ballWeight; persist(); go('calc'); toast(t('Weight applied')); return; }
   const act = el.dataset.act;
@@ -1162,12 +1288,31 @@ document.addEventListener('submit', async e => {
     const l = savedList(); l.unshift({ name, style: state.style, at: Date.now(), data: encodeRecipe() }); setSaved(l);
     render(); toast(t('Saved “{name}”', { name }));
   } else if (e.target.id === 'log-form') saveLogForm();
+  else if (e.target.id === 'flour-form') {
+    const p = Number($('#mf-p').value), w = Number($('#mf-w').value);
+    const lo = Number($('#mf-w1').value) || 60, hi = Number($('#mf-w2').value) || 70;
+    state.myFlours.push({ id: `my-${newId()}`, group: 'My flours', custom: true, name: $('#mf-name').value.trim(), protein: [p, p], W: w ? [w, w] : null, water: [Math.min(lo, hi), Math.max(lo, hi)] });
+    persist(); render(); toast(t('Flour added'));
+  } else if (e.target.id === 'starter-form') {
+    const ratio = [Number($('#ns-a').value) || 1, Number($('#ns-b').value) || 0, Number($('#ns-c').value) || 0];
+    const stn = newStarter({ id: `st-${newId()}`, name: $('#ns-name').value.trim(), hydration: Number($('#ns-h').value) || 100, ratio });
+    state.starters.push(stn);
+    // Use it in every style that has no starter chosen yet.
+    for (const r of Object.values(state.recipes)) if (!r.starterId) Object.assign(r, { starterId: stn.id, starterHydration: stn.hydration });
+    persist(); render(); toast(t('Starter saved'));
+  }
 });
 
 document.addEventListener('change', async e => {
   const el = e.target;
   if (el.matches('input.val[data-key]')) { setValue(el.dataset.key, el.value); return; }
   if (el.matches('input.val[data-flour]')) { setFlour(+el.dataset.flour, Number(el.value.replace(',', '.').replace(/[^\d.]/g, '')) || 0); return; }
+  if (el.dataset.flourPick != null) { pickFlour(+el.dataset.flourPick, el.value); return; }
+  if (el.dataset.starterPick != null) {
+    const stp = state.starters.find(x => x.id === el.value);
+    Object.assign(R(), { starterId: stp ? stp.id : null }, stp ? { starterHydration: stp.hydration } : {});
+    persist(); renderCalc(); return;
+  }
   if (el.dataset.flourName != null) { R().flours[+el.dataset.flourName].name = el.value.trim() || `Flour ${+el.dataset.flourName + 1}`; persist(); renderResults(); return; }
   if (el.dataset.rtoggle) { R()[el.dataset.rtoggle] = el.checked; persist(); renderCalc(); return; }
   if (el.id === 'bake-at') { PL().bakeAt = el.value ? new Date(el.value).getTime() : null; persist(); renderResults(); return; }

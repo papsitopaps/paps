@@ -19,6 +19,8 @@ How the numbers are worked out is in [`docs/formulas.md`](docs/formulas.md) and 
 - **Amounts:** pieces × weight, two piece sizes, wastage, and a blend of up to 3 flours that always adds up to 100%.
 - **Ingredients:** water, salt, oil/fat, sugar/malt.
 - **Fermentation:** room temperature, fridge and after-fridge stages, each at its own temperature. The yeast amount follows a temperature model of baker's yeast (see [`docs/formulas.md`](docs/formulas.md)).
+- **Flour library:** pick each flour from a list of common types (00, Type 0/1, Manitoba, bread, T65, wholemeal, semola, rye) and well-known brands, or add your own. Prozimi fills in the strength (W) and shows the usual water range for the blend.
+- **Starter profiles:** save your starters (hydration, feeding ratio, flour), log each feeding and see when it peaks, whether it is ready, or hungry. The peak can be added to your calendar, and the sourdough lab uses the chosen starter.
 - **Leaveners:** fresh, active dry and instant yeast, plus firm and liquid sourdough with adjustable starter hydration.
   - Levain can be set automatically or by hand, and then shows the hours it supports.
 - **Pre-ferments and old dough:** poolish, biga, and old dough in or out.
