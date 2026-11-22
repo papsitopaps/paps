@@ -18,10 +18,12 @@ How the numbers are worked out is in [`docs/formulas.md`](docs/formulas.md) and 
 - **Pizza and pan size:** the ball weight shows the pizza diameter it makes (in cm and inches), or the pan size it fills for Detroit, Roman pan and focaccia. One-tap buttons set the weight for common sizes (e.g. 30 cm / 12″, or a 25 × 35 cm / 10 × 14″ Detroit pan).
 - **Amounts:** pieces × weight, two piece sizes, wastage, and a blend of up to 3 flours that always adds up to 100%.
 - **Ingredients:** water, salt, oil/fat, sugar/malt.
-- **Fermentation:** room temperature plus fridge (CT) hours, with the yeast amount following time and temperature.
+- **Fermentation:** room temperature, fridge and after-fridge stages, each at its own temperature. The yeast amount follows a temperature model of baker's yeast (see [`docs/formulas.md`](docs/formulas.md)).
 - **Leaveners:** fresh, active dry and instant yeast, plus firm and liquid sourdough with adjustable starter hydration.
   - Levain can be set automatically or by hand, and then shows the hours it supports.
 - **Pre-ferments and old dough:** poolish, biga, and old dough in or out.
+- **Bake mode:** start a bake and get a step-by-step screen with a live countdown, an ingredient checklist, and steps that re-time when you tap Done. **Add to calendar** exports every step with an alert (`.ics`), so you are reminded even with the app closed. The screen stays on while baking.
+- **Water temperature:** each style has a target dough temperature, and the recipe shows the water temperature to hit it for your room and mixer (by hand, stand or spiral).
 - **Bake planner:** enter when you can start and when you want to bake. Prozimi suggests plans that fit (long cold ferment, room temperature only, or rushed). Each shows the time split, yeast amount, leoparding score and a clock-time timeline with night steps flagged. One tap applies a plan. See [`docs/planner.md`](docs/planner.md).
 - **Sourdough lab:** levain build (ratio, hydration, time to peak), bulk fermentation estimate with aliquot-jar target, and starter hydration converter.
 - **Tools:** yeast converter, dough weight for a pan, and water temperature for a target dough temperature.
