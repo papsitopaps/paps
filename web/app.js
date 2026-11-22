@@ -7,6 +7,7 @@ import { listBakes, getBake, putBake, deleteBake, importBakes, newId, shrinkPhot
 import { GLOSSARY } from './glossary.js';
 import { recommendPlans, atNight } from './planner.js';
 import { LIBRARY } from './recipes.js';
+import { toOz, fromOz, ozText, volume, kindFor } from './units.js';
 import { BASE, STYLES, OVENS, DEFAULT_SETTINGS, rebalanceFlours, normalizeFlours, sizeFor, weightFor, inchesOf } from './presets.js';
 import { t, setLang, getLang, detectLang, LANGS } from './i18n.js';
 import { parseRecipe, searchLinks } from './importer.js';
@@ -28,7 +29,7 @@ function migrateKey(key) {
 migrateKey(STORE_KEY); migrateKey(SAVED_KEY);
 
 const freshRecipe = (key, oven = (state?.settings?.oven || 'gas')) =>
-  structuredClone({ ...BASE, flourIds: [STYLE_FLOUR[key] || null, null, null], starterId: null, ...STYLES[key].defaults, ...(OVENS[oven]?.presets[key] || {}) });
+  structuredClone({ ...BASE, flourIds: [STYLE_FLOUR[key] || null, null, null, null], starterId: null, ...STYLES[key].defaults, ...(OVENS[oven]?.presets[key] || {}) });
 
 // ---------- State ----------
 let state = load() || { style: 'neapolitan', recipes: {}, settings: { ...DEFAULT_SETTINGS } };
@@ -87,10 +88,35 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': 
 const tx = m => esc(t(m)); // translate + escape
 const round = (v, d) => Number.isFinite(v) ? Math.round(v * 10 ** d) / 10 ** d : 0;
 const num2 = v => round(v, 2).toLocaleString(getLang());
-function grams(v) {
+// Weights are stored in grams and shown in the chosen unit (g, or oz for both 'oz' and 'cups').
+const metric = () => (S().weightUnit || 'g') === 'g';
+const nfmt = (v, d) => v.toLocaleString(getLang(), { maximumFractionDigits: d, useGrouping: false });
+function gramsOnly(v) {
   if (!Number.isFinite(v)) return '–';
   const d = v >= 50 ? 0 : v >= 1 ? 1 : 2;
-  return `${round(v, d).toLocaleString(getLang(), { maximumFractionDigits: d, useGrouping: false })} g`;
+  return `${nfmt(round(v, d), d)} g`;
+}
+function grams(v) {
+  if (!Number.isFinite(v)) return '–';
+  if (metric()) return gramsOnly(v);
+  const o = ozText(v);
+  return t('{n} oz', { n: nfmt(o.n, o.d) });
+}
+/** A piece weight (stored in g) for labels: "250 g" or "8.8 oz". */
+const pieceW = g => metric() ? `${g} g` : t('{n} oz', { n: nfmt(round(toOz(g), 1), 1) });
+function volumeText(v) {
+  if (v.extra) return `${volumeText({ ...v, extra: null })} + ${volumeText(v.extra)}`;
+  if (v.unit === 'cup') return v.plural ? t('{n} cups', { n: v.n }) : t('{n} cup', { n: v.n });
+  if (v.unit === 'tbsp') return t('{n} tbsp', { n: v.n });
+  return t('{n} tsp', { n: v.n });
+}
+/** An ingredient amount: in cups mode, a volume with the weight below it (when the ingredient has a volume). */
+function amountHTML(g, kind) {
+  const v = S().weightUnit === 'cups' && kind ? volume(g, kind) : null;
+  // Small amounts (under ½ oz) are better weighed in grams: show both.
+  const small = !metric() && g < 14;
+  if (v) return `${esc(volumeText(v))}<small class="g-sub">${esc(small ? gramsOnly(g) : grams(g))}</small>`;
+  return small ? `${esc(gramsOnly(g))}<small class="g-sub">${esc(grams(g))}</small>` : esc(grams(g));
 }
 const tUnit = () => `°${S().unit}`;
 const toDisp = c => S().unit === 'F' ? cToF(c) : c;
@@ -150,13 +176,14 @@ function fieldDefs() {
   const cold = coldOn();
   const temp = (key, label, min, max) => ({ key, label, step: 1, min, max, temp: true, fmt: v => `${Math.round(v)}°` });
   const hrs = v => fmtHours(v);
+  const wfmt = v => metric() ? `${v} g` : t('{n} oz', { n: nfmt(v, 2) });
   const out = [{ sub: t('Dough') },
     { key: 'balls', label: t(st.piece), step: 1, min: 1, max: 999, fmt: v => `${v}` },
-    { key: 'ballWeight', label: t(st.weight), step: 5, min: 10, max: 20000, fmt: v => `${v} g`, sizer: !!st.size },
+    { key: 'ballWeight', label: t(st.weight), step: 5, min: 10, max: 20000, weight: true, fmt: wfmt, sizer: !!st.size },
   ];
   if (s.twoSizes) out.push(
     { key: 'balls2', label: t('{label} · size 2', { label: t(st.piece) }), step: 1, min: 0, max: 999, fmt: v => `${v}` },
-    { key: 'ballWeight2', label: t('{label} · size 2', { label: t(st.weight) }), step: 5, min: 10, max: 20000, fmt: v => `${v} g` },
+    { key: 'ballWeight2', label: t('{label} · size 2', { label: t(st.weight) }), step: 5, min: 10, max: 20000, weight: true, fmt: wfmt },
   );
   out.push(
     { key: 'hydration', label: t('Water'), step: 1, min: 40, max: 120, fmt: v => `${v}%`, range: st.range, advisor: !!st.pizza },
@@ -208,7 +235,12 @@ function fieldDefs() {
   return out;
 }
 
-function valueOf(def) { const v = R()[def.key] ?? (def.auto ? def.auto() : 0); return def.temp ? Math.round(toDisp(v)) : v; }
+function valueOf(def) {
+  const v = R()[def.key] ?? (def.auto ? def.auto() : 0);
+  if (def.temp) return Math.round(toDisp(v));
+  if (def.weight && !metric()) return round(toOz(v), 2);
+  return v;
+}
 
 function tileHTML(d) {
   const v = valueOf(d);
@@ -241,9 +273,18 @@ function renderCalc() {
     else if (d.flour != null) {
       const f = r.flours[d.flour];
       const picked = (r.flourIds || [])[d.flour];
-      g.html.push(`<div class="tile">${flourSelectHTML(d.flour)}${picked ? '' : `<input type="text" class="flour-name" data-flour-name="${d.flour}" value="${tx(f.name)}" aria-label="${esc(t('Flour {n} name', { n: d.flour + 1 }))}">`}
-        <div class="tile-row"><input class="val" inputmode="decimal" value="${f.pct}%" data-flour="${d.flour}" aria-label="${esc(t('{name} percent', { name: t(f.name) }))}">
-        <div class="steps" data-flour="${d.flour}"><button type="button" data-dir="-1" aria-label="${tx('Less')}">${ICON.minus}</button><button type="button" data-dir="1" aria-label="${tx('More')}">${ICON.plus}</button></div></div></div>`);
+      const n = S().floursCount;
+      const card = `<div class="flour-card">
+        <span class="fc-num">${esc(t('Flour {n}', { n: d.flour + 1 }))}</span>
+        ${flourSelectHTML(d.flour)}${picked ? '' : `<input type="text" class="flour-name" data-flour-name="${d.flour}" value="${tx(f.name)}" aria-label="${esc(t('Flour {n} name', { n: d.flour + 1 }))}">`}
+        <div class="fc-row"><button type="button" class="fc-step" data-flour="${d.flour}" data-dir="-1" aria-label="${tx('Less')}">${ICON.minus}</button>
+        <input class="val" inputmode="decimal" value="${f.pct}%" data-flour="${d.flour}" aria-label="${esc(t('{name} percent', { name: t(f.name) }))}">
+        <button type="button" class="fc-step" data-flour="${d.flour}" data-dir="1" aria-label="${tx('More')}">${ICON.plus}</button></div>
+        <span class="fc-bar"><span style="--w:${Math.min(100, Number(f.pct) || 0)}%"></span></span></div>`;
+      // All flours share one full-width grid: 2 or 3 in a row, 4 as two rows of two.
+      if (d.flour === 0) g.html.push(`<div class="tile wide flour-grid n${n}">${card}`);
+      else g.html[g.html.length - 1] += card;
+      if (d.flour === n - 1) g.html[g.html.length - 1] += '</div>';
     } else {
       g.html.push(tileHTML(d));
       if (d.sizer) g.html.push('<div class="tile wide size-box"><div class="advice" id="size-advice"></div></div>');
@@ -300,7 +341,7 @@ function flourInfoHTML() {
 }
 function pickFlour(i, id) {
   const r = R();
-  r.flourIds = [...(r.flourIds || [null, null, null])];
+  r.flourIds = [...(r.flourIds || [])];
   r.flourIds[i] = id || null;
   const f = flourById(id, state.myFlours);
   if (f) r.flours[i].name = f.name;
@@ -336,7 +377,10 @@ function refreshRanges() {
   const size = sizeFor(state.style, R().ballWeight);
   if (sbox && size) {
     const st = ST();
-    const label = c => Array.isArray(c) ? `${c[0]} × ${c[1]} cm (${inchesOf(c[0])} × ${inchesOf(c[1])}″)` : `${c} cm (${inchesOf(c)}″)`;
+    // Inches first when weights are shown in ounces or cups.
+    const label = c => Array.isArray(c)
+      ? (metric() ? `${c[0]} × ${c[1]} cm (${inchesOf(c[0])} × ${inchesOf(c[1])}″)` : `${inchesOf(c[0])} × ${inchesOf(c[1])}″ (${c[0]} × ${c[1]} cm)`)
+      : (metric() ? `${c} cm (${inchesOf(c)}″)` : `${inchesOf(c)}″ (${c} cm)`);
     const now = size.round
       ? t('Makes a pizza about {cm} cm ({inch} in) across', { cm: size.cm, inch: size.inch })
       : t('Fills a pan of about {w} × {l} cm ({wi} × {li} in)', { w: size.w, l: size.l, wi: size.wi, li: size.li });
@@ -379,27 +423,28 @@ function ingredientRows(out, r, st) {
   const lv = LEAVENERS[r.yeastType];
   const F = out.flourTotal || 1;
   const rows = [];
-  if (out.flours.length > 1) out.flours.forEach(f => rows.push([f.name, f.grams]));
-  else rows.push(['Flour', out.flour]);
-  rows.push(['Water', out.water], ['Salt', out.salt]);
-  if (lv.sourdough) rows.push([{ k: 'Levain ({v}%)', p: { v: round(out.levain.pct, 1) } }, out.levain.mass]);
-  else rows.push([{ k: 'Yeast · {type}', p: { type: lv.short } }, out.yeast]);
-  if (out.fat > 0) rows.push([st.fatLabel || 'Fat', out.fat]);
-  if (out.sugar > 0) rows.push(['Sugar', out.sugar]);
-  if (out.oldDough) rows.push(['Old dough', out.oldDough.mass]);
-  if (out.preferment) rows.push([out.preferment.kind === 'poolish' ? 'Poolish (all)' : 'Biga (all)', out.preferment.total]);
-  return rows.map(([name, g]) => ({ name, g, pct: (g / F) * 100 }));
+  const ids = r.flourIds || [];
+  if (out.flours.length > 1) out.flours.forEach((f, i) => rows.push([f.name, f.grams, kindFor('Flour', ids[i] || null)]));
+  else rows.push(['Flour', out.flour, kindFor('Flour', ids[0] || null)]);
+  rows.push(['Water', out.water, 'water'], ['Salt', out.salt, 'salt']);
+  if (lv.sourdough) rows.push([{ k: 'Levain ({v}%)', p: { v: round(out.levain.pct, 1) } }, out.levain.mass, 'levain']);
+  else rows.push([{ k: 'Yeast · {type}', p: { type: lv.short } }, out.yeast, lv.short === 'CY' ? null : lv.short]);
+  if (out.fat > 0) rows.push([st.fatLabel || 'Fat', out.fat, 'oil']);
+  if (out.sugar > 0) rows.push(['Sugar', out.sugar, 'sugar']);
+  if (out.oldDough) rows.push(['Old dough', out.oldDough.mass, null]);
+  if (out.preferment) rows.push([out.preferment.kind === 'poolish' ? 'Poolish (all)' : 'Biga (all)', out.preferment.total, null]);
+  return rows.map(([name, g, kind]) => ({ name, g, kind, pct: (g / F) * 100 }));
 }
 
 function renderResults() {
   const r = R(), s = S(), st = ST();
   const out = computeDough(calcInput(), s);
   const rows = ingredientRows(out, r, st);
-  const pieces = `${r.balls} × ${r.ballWeight} g${s.twoSizes && r.balls2 ? ` + ${r.balls2} × ${r.ballWeight2} g` : ''}`;
+  const pieces = `${r.balls} × ${pieceW(r.ballWeight)}${s.twoSizes && r.balls2 ? ` + ${r.balls2} × ${pieceW(r.ballWeight2)}` : ''}`;
   let html = `<section class="hero">
     <p class="eyebrow">${tx(st.name)} · <span class="nocase">${esc(pieces)}</span></p>
-    <p class="total"><span>${Math.round(out.dough)}</span> ${tx('g dough')}</p>
-    <ul class="ingredients">${rows.map(x => `<li><span class="name">${tx(x.name)}</span><span class="pct">${round(x.pct, x.pct < 1 ? 2 : 1)}%</span><span class="g">${grams(x.g)}</span>
+    <p class="total"><span>${metric() ? Math.round(out.dough) : nfmt(round(toOz(out.dough), 1), 1)}</span> ${metric() ? tx('g dough') : tx('oz dough')}</p>
+    <ul class="ingredients">${rows.map(x => `<li><span class="name">${tx(x.name)}</span><span class="pct">${round(x.pct, x.pct < 1 ? 2 : 1)}%</span><span class="g">${amountHTML(x.g, x.kind)}</span>
       <span class="fill" style="--w:${Math.min(100, x.pct).toFixed(1)}%"></span></li>`).join('')}</ul>
     <div class="actions"><button class="btn primary" data-act="log-new">${tx('Log this bake')}</button><button class="btn" data-act="save">${tx('Save recipe')}</button><button class="btn" data-act="share">${tx('Share')}</button></div>
   </section>`;
@@ -562,6 +607,7 @@ function setValue(key, displayValue) {
   let v = Number(String(displayValue).replace(',', '.').replace(/[^\d.\-]/g, ''));
   if (!Number.isFinite(v)) v = valueOf(d);
   if (d.temp) v = Math.min(d.max, Math.max(d.min, fromDisp(v)));
+  else if (d.weight) v = Math.min(d.max, Math.max(d.min, metric() ? Math.round(v) : round(fromOz(v), 1)));
   else v = Math.min(d.max, Math.max(d.min, v));
   R()[key] = round(v, 2);
   persist();
@@ -573,6 +619,7 @@ function setValue(key, displayValue) {
 function bump(key, dir) {
   const d = findDef(key); if (!d) return;
   if (d.temp) { const c = R()[key] + dir * (S().unit === 'F' ? 5 / 9 : 1) * (key === 'ovenTemp' ? 5 : 1); setValue(key, toDisp(c)); }
+  else if (d.weight && !metric()) setValue(key, round((Math.round(valueOf(d) * 4) + dir) / 4, 2)); // ¼ oz steps
   else setValue(key, valueOf(d) + dir * d.step);
 }
 function setFlour(i, pct) {
@@ -647,7 +694,7 @@ const PAGES = {
   settings: () => `<div class="list">
     <div class="row"><label for="set-lang">${tx('Language')}</label><select id="set-lang" data-setting="lang">${Object.entries(LANGS).map(([k, n]) => `<option value="${k}" ${getLang() === k ? 'selected' : ''}>${n}</option>`).join('')}</select></div>
     ${toggleRow('twoSizes', t('Two piece sizes'))}
-    <div class="row"><label for="set-flours">${tx('Number of flours')}</label><select id="set-flours" data-setting="floursCount">${[1, 2, 3].map(n => `<option ${S().floursCount == n ? 'selected' : ''}>${n}</option>`).join('')}</select></div>
+    <div class="row"><label for="set-flours">${tx('Number of flours')}</label><select id="set-flours" data-setting="floursCount">${[1, 2, 3, 4].map(n => `<option ${S().floursCount == n ? 'selected' : ''}>${n}</option>`).join('')}</select></div>
     ${toggleRow('fats', t('Fats / oil'), t('Always on for Roman and focaccia.'))}
     ${toggleRow('sugar', t('Sugar / malt'))}
     ${toggleRow('ct', t('Cold fermentation'), t('Always on for Contemporary, Roman and sourdough loaf.'))}
@@ -659,6 +706,7 @@ const PAGES = {
     <div class="row"><label for="set-oven">${tx('Pizza oven')}<small>${tx('Sets the stone temperature, bake time and tips for Neapolitan and Contemporary.')} ${(OVENS[S().oven] || OVENS.gas).hint ? tx(OVENS[S().oven].hint) : ''}</small></label><select id="set-oven" data-setting="oven">${Object.entries(OVENS).map(([k, o]) => `<option value="${k}" ${S().oven === k ? 'selected' : ''}>${tx(o.name)}</option>`).join('')}</select></div>
     <div class="row"><label for="set-mixer">${tx('Mixing')}<small>${tx('Used to work out the water temperature.')}</small></label><select id="set-mixer" data-setting="mixer">${Object.keys(MIXERS).map(k => `<option value="${k}" ${S().mixer === k ? 'selected' : ''}>${tx(MIXER_NAMES[k])}</option>`).join('')}</select></div>
     ${toggleRow('keepAwake', t('Keep screen on'))}
+    <div class="row"><span>${tx('Weights')}<small>${tx('Cups are approximate: weigh flour when you can.')}</small></span><div class="seg small">${[['g', 'g'], ['oz', 'oz'], ['cups', t('cups')]].map(([u, l]) => `<button data-wunit="${u}" aria-pressed="${(S().weightUnit || 'g') === u}">${esc(l)}</button>`).join('')}</div></div>
     <div class="row"><span>${tx('Temperature')}</span><div class="seg small">${['C', 'F'].map(u => `<button data-unit="${u}" aria-pressed="${S().unit === u}">°${u}</button>`).join('')}</div></div>
     </div>
     <p class="note">${tx('Light and dark mode: use the button at the top of the screen.')}</p>
@@ -828,7 +876,7 @@ function startBake() {
   state.session = {
     id: newId(), style: state.style, created: Date.now(),
     steps: timeSteps(steps, start), checks: {},
-    rows: ingredientRows(out, R(), ST()).map(x => ({ name: t(x.name), g: grams(x.g) })),
+    rows: ingredientRows(out, R(), ST()).map(x => ({ name: t(x.name), g: x.g, kind: x.kind })),
     pre: out.preferment ? prefermentLine(out.preferment) : null,
     water: tempStr(Math.max(0, waterNeeded(out))), ddt: tempStr(R().ddt ?? 23),
   };
@@ -858,7 +906,7 @@ function bakePageHTML() {
   }
   const list = `<ol class="timeline timed bm-list">${ss.steps.map((s, i) => `<li class="${s.done ? 'done' : i === cur ? 'now' : ''}${!s.done && atNight(new Date(s.start)) && !s.bake ? ' night' : ''}">
       <span class="when">${fmtWhen(new Date(s.start))}</span><span>${s.done ? '✓ ' : ''}${esc(s.label)}${s.hours ? ` <span class="muted">${fmtHours(s.hours)}</span>` : ''}</span></li>`).join('')}</ol>`;
-  const checks = `<ul class="checklist">${ss.rows.map((x, i) => `<li><label><input type="checkbox" data-check="${i}" ${ss.checks[i] ? 'checked' : ''}><span>${esc(x.name)}</span><b>${esc(x.g)}</b></label></li>`).join('')}</ul>
+  const checks = `<ul class="checklist">${ss.rows.map((x, i) => `<li><label><input type="checkbox" data-check="${i}" ${ss.checks[i] ? 'checked' : ''}><span>${esc(x.name)}</span><b>${typeof x.g === 'number' ? amountHTML(x.g, x.kind) : esc(x.g)}</b></label></li>`).join('')}</ul>
     <p class="note">${esc(t('Use water at {w} to reach {t} dough.', { w: ss.water, t: ss.ddt }))}${ss.pre ? ` ${esc(ss.pre)}` : ''}</p>`;
   return `${hero}
     <section class="card"><h3>${tx('Steps')}</h3>${list}
@@ -944,7 +992,7 @@ function summarize(r, st, s) {
   const out = computeDough(calcInput(r, st, s), s);
   return {
     dough: out.dough, hours: out.hours, yeastPctCY: out.yeastPctCY,
-    rows: ingredientRows(out, r, st).map(x => ({ name: x.name, g: x.g, pct: x.pct })),
+    rows: ingredientRows(out, r, st).map(x => ({ name: x.name, g: x.g, kind: x.kind, pct: x.pct })),
     preferment: out.preferment, levain: out.levain,
   };
 }
@@ -972,7 +1020,7 @@ function recipeFacts(b) {
   const cold = !!(st.forceCold || s.ct);
   const at = (h, c) => t('{h} at {t}', { h: fmtHours(h), t: tempStr(c) });
   const facts = [
-    [t('Pieces'), `${r.balls} × ${r.ballWeight} g${s.twoSizes && r.balls2 ? ` + ${r.balls2} × ${r.ballWeight2} g` : ''}`],
+    [t('Pieces'), `${r.balls} × ${pieceW(r.ballWeight)}${s.twoSizes && r.balls2 ? ` + ${r.balls2} × ${pieceW(r.ballWeight2)}` : ''}`],
     [t('Hydration'), `${r.hydration}%`], [t('Salt'), `${r.salt}%`],
     [t('Leavening'), t(lv.label) + (lv.sourdough ? ` (${t('starter {v}%', { v: r.starterHydration })})` : '')],
     [t(st.rt1 || 'Room temp rise'), at(r.rt1Hours, r.rtTemp)],
@@ -1009,7 +1057,7 @@ const LOG_PAGES = {
       <div class="bakes">${list.map(b => `<button class="bake" data-open-bake="${esc(b.id)}">
         ${b.photo ? `<img src="${b.photo}" alt="">` : `<span class="ph" aria-hidden="true">${ICON.flame}</span>`}
         <span class="meta"><b>${esc(b.name)}</b><small>${esc(fmtDate(b.bakedAt))}</small>
-        <small>${tx(b.styleName)} · ${b.recipe.hydration}% · ${Math.round(b.summary.dough)} g${b.rating ? ` · <span class="stars-txt">${starText(b.rating)}</span>` : ''}</small></span>
+        <small>${tx(b.styleName)} · ${b.recipe.hydration}% · ${grams(b.summary.dough)}${b.rating ? ` · <span class="stars-txt">${starText(b.rating)}</span>` : ''}</small></span>
         ${b.leopardScore != null ? `<span class="badge-score" title="${tx('Leopard score when logged')}">${b.leopardScore}</span>` : ''}
       </button>`).join('') || `<p class="note">${tx('No bakes match your search.')}</p>`}</div>`;
   },
@@ -1063,8 +1111,8 @@ function prefermentLine(pf) {
 function factsHTML(b) {
   const sum = b.summary;
   const pf = sum.preferment;
-  return `<section class="card"><h3>${esc(t('Ingredients · {g}', { g: `${Math.round(sum.dough)} g` }))}</h3><table>${sum.rows.map(x =>
-    `<tr><td>${tx(x.name)} <span class="muted">${round(x.pct, x.pct < 1 ? 2 : 1)}%</span></td><td>${grams(x.g)}</td></tr>`).join('')}</table>
+  return `<section class="card"><h3>${esc(t('Ingredients · {g}', { g: grams(sum.dough) }))}</h3><table>${sum.rows.map(x =>
+    `<tr><td>${tx(x.name)} <span class="muted">${round(x.pct, x.pct < 1 ? 2 : 1)}%</span></td><td>${amountHTML(x.g, x.kind)}</td></tr>`).join('')}</table>
     ${pf ? `<p class="note">${esc(prefermentLine(pf))}</p>` : ''}
     ${sum.levain ? `<p class="note">${esc(t('Levain: {f} flour, {w} water.', { f: grams(sum.levain.flour), w: grams(sum.levain.water) }))}</p>` : ''}</section>
     <section class="card"><h3>${tx('Process')}</h3><table>${recipeFacts(b).map(([k, v]) => `<tr><td>${esc(k)}</td><td>${esc(v)}</td></tr>`).join('')}</table></section>`;
@@ -1145,9 +1193,12 @@ function decodeRecipe(str) {
 }
 function shareText() {
   const out = computeDough(calcInput(), S());
-  const lines = [t('{style}: {pieces} · {hyd}% water · {salt}% salt', { style: t(ST().name), pieces: `${R().balls} × ${R().ballWeight} g`, hyd: R().hydration, salt: R().salt })];
+  const lines = [t('{style}: {pieces} · {hyd}% water · {salt}% salt', { style: t(ST().name), pieces: `${R().balls} × ${pieceW(R().ballWeight)}`, hyd: R().hydration, salt: R().salt })];
   if (out.preferment) lines.push(prefermentLine(out.preferment));
-  ingredientRows(out, R(), ST()).forEach(x => lines.push(`${t(x.name)}: ${grams(x.g)}`));
+  ingredientRows(out, R(), ST()).forEach(x => {
+    const v = S().weightUnit === 'cups' && x.kind ? volume(x.g, x.kind) : null;
+    lines.push(`${t(x.name)}: ${v ? `${volumeText(v)} (${grams(x.g)})` : grams(x.g)}`);
+  });
   return lines.join('\n');
 }
 async function share() {
@@ -1174,6 +1225,7 @@ document.addEventListener('click', async e => {
   if (el.dataset.style) { state.style = el.dataset.style; persist(); render(); return; }
   if (el.dataset.yeast) { R().yeastType = el.dataset.yeast; persist(); renderCalc(); return; }
   if (el.dataset.unit) { S().unit = el.dataset.unit; persist(); render(); return; }
+  if (el.dataset.wunit) { S().weightUnit = el.dataset.wunit; persist(); render(); return; }
   if (el.dataset.bakeAt) { PL().bakeAt = Number(el.dataset.bakeAt); persist(); renderResults(); return; }
   if (el.dataset.plan != null) {
     const out = computeDough(calcInput(), S());
@@ -1186,8 +1238,8 @@ document.addEventListener('click', async e => {
   }
   if (el.dataset.setsize) {
     const c = JSON.parse(el.dataset.setsize);
-    setValue('ballWeight', weightFor(state.style, c));
-    toast(t('Weight set to {g} g', { g: R().ballWeight })); return;
+    R().ballWeight = weightFor(state.style, c); persist(); renderCalc();
+    toast(t('Weight set to {g}', { g: pieceW(R().ballWeight) })); return;
   }
   if (el.dataset.sethyd) { setValue('hydration', el.dataset.sethyd); toast(t('Water set to {v}%', { v: el.dataset.sethyd })); return; }
   if (el.dataset.load != null) { const it = savedList()[+el.dataset.load]; if (it && decodeRecipe(it.data)) { go('calc'); toast(t('Opened “{name}”', { name: it.name })); } return; }
@@ -1261,17 +1313,17 @@ document.addEventListener('click', async e => {
 });
 
 document.addEventListener('pointerdown', e => {
-  const b = e.target.closest('.steps button'); if (!b) return;
+  const b = e.target.closest('.steps button, button.fc-step'); if (!b) return;
   e.preventDefault();
-  const st = b.closest('.steps'); const dir = Number(b.dataset.dir);
+  const st = b.closest('.steps') || b; const dir = Number(b.dataset.dir);
   const fire = () => st.dataset.flour != null ? bumpFlour(+st.dataset.flour, dir) : bump(st.dataset.key, dir);
   fire(); stopHold();
   if (st.dataset.flour == null) holdTimer = setTimeout(() => { holdTimer = setInterval(fire, 70); }, 420);
 });
 document.addEventListener('keydown', e => {
-  const b = e.target.closest?.('.steps button');
+  const b = e.target.closest?.('.steps button, button.fc-step');
   if (b && (e.key === 'Enter' || e.key === ' ')) {
-    e.preventDefault(); const st = b.closest('.steps'); const dir = Number(b.dataset.dir);
+    e.preventDefault(); const st = b.closest('.steps') || b; const dir = Number(b.dataset.dir);
     st.dataset.flour != null ? bumpFlour(+st.dataset.flour, dir) : bump(st.dataset.key, dir);
   }
   const inp = e.target.closest?.('input.val[data-key]');

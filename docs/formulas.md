@@ -113,4 +113,20 @@ It warns when that differs from your schedule by more than 2.5×.
 - **Strength (W):** the middle of the published range. When a flour has no published W, it is estimated from protein: `W ≈ 25 · protein% − 40`. The blend W and water range are averages weighted by each flour's share, with W rounded to 10.
 - **Starter status:** from the last feeding, the time to peak uses the levain formula in section 8. Within 1 h of peak it is *at peak*, up to 8 h later *past peak*, after that *hungry*.
 
+## 11. Units
+
+Recipes are stored in grams. 1 oz = 28.3495 g. Cups are US cups (236.6 ml), with these weights per cup:
+
+| Ingredient | g per cup |
+|---|---|
+| Flour (spooned and levelled) | 120 (wholemeal 113, rye 102, semola 163) |
+| Water | 236.6 |
+| Fine salt | 288 |
+| Instant or active dry yeast | 149 |
+| Oil | 216 |
+| Sugar | 200 |
+| Levain / starter | 227 |
+
+A cup amount is rounded down to a measuring cup (¼, ⅓, ½, ⅔, ¾) and the rest is given in tablespoons. Below ¼ cup it uses tablespoons, then teaspoons (to the nearest ⅛). Fresh yeast, old dough and pre-ferments are shown by weight only. The recipe importer uses the same table to turn cups and spoons into grams.
+
 All sourdough and pre-ferment numbers are starting points. Flour, starter strength and kitchen conditions vary.
