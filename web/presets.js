@@ -11,6 +11,7 @@ export const BASE = {
   yeastManual: false, yeastPct: 0.3, method: null, source: null, recipeName: null, templateId: null,
   oldDoughIn: 10, oldDoughOut: 10,
   ovenTemp: 450, bakeSeconds: 80, flourW: 280,
+  rt2Temp: null, ddt: 23,
 };
 
 export const STYLES = {
@@ -20,7 +21,7 @@ export const STYLES = {
     traits: ["Water 58–65%", "Salt 2.5–3%", "Type 00 flour, W 250–300", "Stone 430–485 °C, 60–90 s", "No oil or sugar"],
     name: 'Neapolitan', piece: 'Dough balls', weight: 'Ball weight', rt1: 'RT leavening', rt2: 'Balls at RT after fridge',
     rt2OnlyWithCold: true, pizza: true, range: [55, 70], search: 'neapolitan pizza dough', tag: 'pizzanapoletana',
-    defaults: { rt2Hours: 4, ovenTemp: 450, bakeSeconds: 75, flourW: 260 },
+    defaults: { ddt: 23, rt2Hours: 4, ovenTemp: 450, bakeSeconds: 75, flourW: 260 },
   },
   contemporary: {
     size: { round: true, factor: 0.36, choices: [28, 30, 32, 34] },
@@ -28,7 +29,7 @@ export const STYLES = {
     traits: ["Water 68–78%", "Cold ferment 24–72 h", "Biga or poolish often used", "Flour W 300–340", "Stone 420–460 °C, 70–100 s"],
     name: 'Contemporary', piece: 'Dough balls', weight: 'Ball weight', rt1: 'Bulk at RT', rt2: 'Balls at RT',
     pizza: true, contemporary: true, forceCold: true, range: [65, 78], search: 'contemporary neapolitan pizza dough', tag: 'pizzacontemporanea',
-    defaults: { ballWeight: 270, hydration: 70, salt: 2.8, rt1Hours: 2, ctHours: 24, rt2Hours: 4, rtTemp: 21, ovenTemp: 440, bakeSeconds: 85, flourW: 300 },
+    defaults: { ddt: 20, ballWeight: 270, hydration: 70, salt: 2.8, rt1Hours: 2, ctHours: 24, rt2Hours: 4, rtTemp: 21, ovenTemp: 440, bakeSeconds: 85, flourW: 300 },
   },
   detroit: {
     size: { factor: 0.55, choices: [[20, 25], [25, 35], [30, 40]] },
@@ -36,7 +37,7 @@ export const STYLES = {
     traits: ["Water 68–75%", "Oiled steel pan, 25 × 35 cm", "Cheese to the edges (frico)", "Home oven 250–290 °C, 12–15 min"],
     name: 'Detroit', piece: 'Pans', weight: 'Dough per pan', rt1: 'Bulk (RT)', rt2: 'Proof in pan',
     range: [65, 78], search: 'detroit style pizza dough', tag: 'detroitstylepizza',
-    defaults: { ballWeight: 520, hydration: 70, salt: 2.2, fat: 2, rt1Hours: 2, ctHours: 24, rt2Hours: 2.5, rtTemp: 22, yeastType: 'IDY' },
+    defaults: { ddt: 24, ballWeight: 520, hydration: 70, salt: 2.2, fat: 2, rt1Hours: 2, ctHours: 24, rt2Hours: 2.5, rtTemp: 22, yeastType: 'IDY' },
   },
   roman: {
     size: { factor: 0.6, choices: [[30, 40], [35, 45], [40, 60]] },
@@ -44,7 +45,7 @@ export const STYLES = {
     traits: ["Water 75–90%", "Cold rise 24–72 h", "Strong flour, W 300+", "Oiled pan", "250–300 °C, 15–20 min"],
     name: 'Roman pan', piece: 'Pans', weight: 'Dough per pan', rt1: 'RT before fridge', rt2: 'RT after fridge',
     range: [70, 90], forceFat: true, forceCold: true, fatLabel: 'Oil', search: 'pizza in teglia roman pan pizza dough', tag: 'pizzainteglia',
-    defaults: { ballWeight: 600, hydration: 80, salt: 2.5, fat: 3, rt1Hours: 2, ctHours: 48, rt2Hours: 3, yeastType: 'IDY' },
+    defaults: { ddt: 21, ballWeight: 600, hydration: 80, salt: 2.5, fat: 3, rt1Hours: 2, ctHours: 48, rt2Hours: 3, yeastType: 'IDY' },
   },
   focaccia: {
     size: { factor: 0.65, choices: [[20, 30], [25, 35], [30, 40]] },
@@ -52,21 +53,21 @@ export const STYLES = {
     traits: ["Water 70–85%", "Olive oil in and on the dough", "Proofed in the tray", "220–250 °C, 20–30 min"],
     name: 'Focaccia', piece: 'Trays', weight: 'Dough per tray', rt1: 'Bulk (RT)', rt2: 'Proof in tray',
     range: [65, 85], forceFat: true, fatLabel: 'Olive oil', search: 'focaccia recipe', tag: 'focaccia',
-    defaults: { ballWeight: 800, hydration: 75, salt: 2.5, fat: 5, rt1Hours: 3, rt2Hours: 2, ctHours: 18, yeastType: 'IDY' },
+    defaults: { ddt: 24, ballWeight: 800, hydration: 75, salt: 2.5, fat: 5, rt1Hours: 3, rt2Hours: 2, ctHours: 18, yeastType: 'IDY' },
   },
   baguette: {
     about: 'Long, thin French bread with a crackling crust and an open, creamy crumb. A poolish adds flavour.',
     traits: ["Water 65–75%", "Salt about 2%", "Poolish for flavour", "240–250 °C with steam, 20–25 min"],
     name: 'Baguette', piece: 'Baguettes', weight: 'Weight each', rt1: 'Bulk (RT)', rt2: 'Final proof',
     range: [65, 78], search: 'baguette poolish recipe', tag: 'baguette',
-    defaults: { balls: 3, ballWeight: 350, hydration: 70, salt: 2, rt1Hours: 3, rt2Hours: 1, rtTemp: 22, yeastType: 'CY', poolishPct: 40, poolishHours: 12 },
+    defaults: { ddt: 24, balls: 3, ballWeight: 350, hydration: 70, salt: 2, rt1Hours: 3, rt2Hours: 1, rtTemp: 22, yeastType: 'CY', poolishPct: 40, poolishHours: 12 },
   },
   bread: {
     about: 'A naturally leavened loaf made with a sourdough starter: deep flavour, a chewy crust and an open crumb.',
     traits: ["Water 70–85%", "Levain 10–25% of the flour", "Bulk 4–6 h, cold retard overnight", "Dutch oven 240–250 °C, 40–45 min"],
     name: 'Sourdough loaf', piece: 'Loaves', weight: 'Weight each', rt1: 'Bulk (RT)', rt2: 'Final proof',
     range: [65, 90], forceCold: true, search: 'sourdough bread recipe', tag: 'sourdoughbread',
-    defaults: { ballWeight: 900, hydration: 75, salt: 2, rt1Hours: 5, rt2Hours: 1, ctHours: 14, rtTemp: 24, yeastType: 'LSD', starterHydration: 100 },
+    defaults: { ddt: 25, ballWeight: 900, hydration: 75, salt: 2, rt1Hours: 5, rt2Hours: 1, ctHours: 14, rtTemp: 24, yeastType: 'LSD', starterHydration: 100 },
   },
 };
 
@@ -103,7 +104,7 @@ export const OVENS = {
 export const DEFAULT_SETTINGS = {
   twoSizes: false, floursCount: 1, fats: false, sugar: false, ct: false,
   oldDoughIn: false, oldDoughOut: false, biga: false, poolish: false,
-  wastage: 0, keepAwake: false, unit: 'C', theme: 'auto', oven: 'gas', lang: null,
+  wastage: 0, keepAwake: false, unit: 'C', theme: 'auto', oven: 'gas', lang: null, mixer: 'hand',
 };
 
 /**

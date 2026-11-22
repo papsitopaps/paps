@@ -20,32 +20,47 @@ Whatever the levain, pre-ferment or old dough already supplies is subtracted, so
 ## 2. Fresh-yeast model
 
 ```
-CY% = K · (1 + S/200) · (1 + Fat/300) / ((4.2·H − 80 − 0.0305·H²) · T^2.5 · t^1.2)
+CY% = 0.497% × hydration factor × salt factor × fat factor × (8 / P)^1.2
 ```
 
-- *H* is hydration in %, clamped to 50–100.
-- *S* and *Fat* are in %.
-- *T* is room temperature in °C.
-- *t* is fermentation hours expressed as hours at room temperature.
+- **P** is the fermentation progress in *hours at 20 °C* (see section 3).
+- **Hydration factor:** `hyd(60) / hyd(H)`, where `hyd(H) = 4.2·H − 80 − 0.0305·H²`, with H clamped to 50–100%. Wetter dough needs slightly less yeast.
+- **Salt factor:** `(1 + S/200) / (1 + 3/200)`. More salt needs slightly more yeast.
+- **Fat factor:** `1 + Fat/300`.
 
-The structure is the classic empirical formula for Neapolitan dough:
-
-- **Time and temperature:** yeast falls steeply with both.
-- **Salt and fat:** slightly more yeast is needed.
-- **Hydration:** a quadratic term.
-
-`K = 6.6069e5` is calibrated so the reference case (250 g ball, 60% water, 3% salt, 8 h at 20 °C) gives 0.497% (0.76 g).
+The reference point is 60% water, 3% salt and 8 h at 20 °C, which gives 0.497% fresh yeast, or 0.76 g in a 250 g ball.
+Doubling the fermentation divides the yeast by 2^1.2 ≈ 2.3.
 The result is clamped to 0.005–5%.
 
-## 3. Cold fermentation
+## 3. Temperature and stages
 
-Fridge hours are converted to equivalent room-temperature hours, using the same temperature sensitivity as the yeast model:
+Each stage counts at its own temperature. Prozimi adds up `hours × rate(T)` over the stages: room temperature, then fridge, then the stage after the fridge (which has its own temperature).
 
-```
-t_eq = t_RT1 + t_RT2 + t_CT · (T_CT / T_RT)^(2.5/1.2)
-```
+`rate(T)` is the cardinal temperature model with inflection (Rosso et al., 1993), with typical cardinal temperatures for baker's yeast:
 
-Example: 24 h at 4 °C counts as about 0.84 h at 20 °C.
+| Cardinal temperature | Value |
+|---|---|
+| Tmin | 0 °C |
+| Topt | 32 °C |
+| Tmax | 45 °C |
+
+It is normalised so that rate(20 °C) = 1:
+
+| Temperature | 2 °C | 4 °C | 8 °C | 15 °C | 18 °C | 22 °C | 24 °C | 26 °C | 30 °C |
+|---|---|---|---|---|---|---|---|---|---|
+| rate | 0.014 | 0.055 | 0.21 | 0.64 | 0.85 | 1.14 | 1.27 | 1.39 | 1.54 |
+
+So a day in a 4 °C fridge counts like about 1.3 h at 20 °C. A warm 26 °C kitchen ferments about 40% faster than 20 °C.
+
+Typical results:
+
+| Fermentation | Fresh yeast (CY) | Instant dry yeast (IDY) |
+|---|---|---|
+| 24 h at 18 °C | 0.16% | 0.05% |
+| 2 h + 24 h at 4 °C + 4 h | 0.55% | 0.18% |
+| 2 h + 48 h at 4 °C + 4 h | 0.45% | 0.15% |
+
+These are in the range home pizza makers commonly use. The tests check them.
 
 ## 4. Converting between leaveners (fresh yeast = 1)
 
@@ -91,6 +106,6 @@ It warns when that differs from your schedule by more than 2.5×.
 | Tool | Formula |
 |---|---|
 | Pan dough | area × thickness factor (g/cm²) |
-| Water temperature | `3·DDT − room − flour − friction`. With a levain it becomes `4·DDT − room − flour − friction − levain`. |
+| Water temperature | `3·DDT − room − flour − friction`. With a levain it becomes `4·DDT − room − flour − friction − levain`. Mixer friction is 1 °C by hand, 6 °C for a stand mixer and 11 °C for a spiral mixer. The result appears in the recipe for each style's target dough temperature. |
 
 All sourdough and pre-ferment numbers are starting points. Flour, starter strength and kitchen conditions vary.

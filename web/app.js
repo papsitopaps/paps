@@ -10,6 +10,7 @@ import { LIBRARY } from './recipes.js';
 import { BASE, STYLES, OVENS, DEFAULT_SETTINGS, rebalanceFlours, normalizeFlours, sizeFor, weightFor, inchesOf } from './presets.js';
 import { t, setLang, getLang, detectLang, LANGS } from './i18n.js';
 import { parseRecipe, searchLinks } from './importer.js';
+import { timeSteps, completeStep, currentStep, buildIcs, countdown, waterFor, MIXERS } from './bakemode.js';
 
 const APP = 'Prozimi';
 const VERSION = '1.2';
@@ -132,7 +133,7 @@ function applyTheme() {
 let wakeLock = null;
 async function applyWakeLock() {
   try {
-    if (S().keepAwake && 'wakeLock' in navigator && document.visibilityState === 'visible') {
+    if ((S().keepAwake || view === 'bake') && 'wakeLock' in navigator && document.visibilityState === 'visible') {
       if (!wakeLock) { wakeLock = await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release', () => { wakeLock = null; }); }
     } else if (wakeLock) { await wakeLock.release(); wakeLock = null; }
   } catch { wakeLock = null; }
@@ -164,7 +165,9 @@ function fieldDefs() {
   out.push({ sub: t('Fermentation') });
   out.push({ key: 'rt1Hours', label: t(st.rt1), step: 1, min: 1, max: 72, fmt: hrs }, temp('rtTemp', t('Room temp'), 1, 40));
   if (cold) out.push({ key: 'ctHours', label: t('Fridge'), step: 1, min: 0, max: 120, fmt: hrs }, temp('ctTemp', t('Fridge temp'), 1, 12));
-  if (st.rt2 && (!st.rt2OnlyWithCold || cold)) out.push({ key: 'rt2Hours', label: t(st.rt2), step: 0.5, min: 0, max: 24, fmt: hrs });
+  if (st.rt2 && (!st.rt2OnlyWithCold || cold)) out.push({ key: 'rt2Hours', label: t(st.rt2), step: 0.5, min: 0, max: 24, fmt: hrs },
+    { ...temp('rt2Temp', t('{stage} temp', { stage: t(st.rt2) }), 1, 40), auto: () => R().rtTemp });
+  out.push(temp('ddt', t('Target dough temp'), 10, 32));
 
   out.push({ sub: t('Leavening') }, { yeast: true });
   if (!lv.sourdough) {
@@ -365,6 +368,7 @@ function renderResults() {
     <tr><td>${tx('Total flour')}</td><td>${grams(out.flourTotal)}</td></tr>
     <tr><td>${tx('Total water')}</td><td>${grams(out.flourTotal * r.hydration / 100)}</td></tr>
     <tr><td>${tx('Fermentation, as hours at room temp')}</td><td>${fmtHours(out.hours)}</td></tr>
+    ${waterRowHTML(out)}
     ${out.yeastManual ? `<tr><td>${tx('Yeast set by hand supports')}</td><td>≈ ${esc(t('{h} at room temp', { h: fmtHours(out.yeastHours) }))}</td></tr>` : `<tr><td>${tx('Fresh-yeast equivalent')}</td><td>${round(out.yeastPctCY, 3)}%</td></tr>`}
     ${out.oldDoughOut ? `<tr><td>${tx('Set aside for next batch')}</td><td>${grams(out.oldDoughOut)}</td></tr>` : ''}
     ${s.wastage ? `<tr><td>${tx('Wastage allowance')}</td><td>${s.wastage}%</td></tr>` : ''}
@@ -375,6 +379,18 @@ function renderResults() {
     ${r.source ? `<p class="note">${tx(r.source)}</p>` : ''}<button class="btn" data-act="clear-method">${tx('Hide method')}</button></section>`;
   $('#results').innerHTML = html;
 }
+
+// Water temperature to reach the target dough temperature (desired-dough-temperature rule).
+function waterNeeded(out, r = R()) {
+  return waterFor({ target: r.ddt ?? 23, room: r.rtTemp, flour: r.rtTemp, mixer: S().mixer, levain: out.levain ? r.rtTemp : null });
+}
+function waterRowHTML(out, r = R()) {
+  const w = waterNeeded(out, r);
+  const note = w < 2 ? `<p class="warn">${tx('That is colder than tap water: chill the flour or use ice water.')}</p>`
+    : w > 40 ? `<p class="warn">${tx('Water this hot can harm yeast: warm the room or the flour instead.')}</p>` : '';
+  return `<tr><td>${esc(t('Water temperature for {t} dough ({mixer})', { t: tempStr(r.ddt ?? 23), mixer: t(MIXER_NAMES[S().mixer] || MIXER_NAMES.hand) }))}</td><td>${tempStr(Math.max(0, w))}</td></tr>${note ? `<tr><td colspan="2">${note}</td></tr>` : ''}`;
+}
+const MIXER_NAMES = { hand: 'by hand', stand: 'stand mixer', spiral: 'spiral mixer' };
 
 // ---------- Schedule & bake planner ----------
 const PL = () => (state.planner ||= { bakeAt: null, startAt: null });
@@ -435,7 +451,10 @@ function plannerHTML(out) {
       <label for="bake-at">${tx('I want to bake')}<input type="datetime-local" id="bake-at" value="${pl.bakeAt ? toLocalInput(new Date(pl.bakeAt)) : ''}"></label>
     </div>
     <div class="chips">${quickTimes().map(([label, d]) => `<button type="button" class="chip" data-bake-at="${d.getTime()}">${esc(label)}</button>`).join('')}
-      ${pl.startAt ? `<button type="button" class="chip ghost" data-act="start-now">${tx('Start now')}</button>` : ''}</div>`;
+      ${pl.startAt ? `<button type="button" class="chip ghost" data-act="start-now">${tx('Start now')}</button>` : ''}</div>
+    <div class="bake-cta">${state.session
+      ? `<button type="button" class="btn primary" data-go="bake">${tx('Open bake in progress')}</button>`
+      : `<button type="button" class="btn primary" data-act="bake-start">${tx('Start bake')}</button><span class="note">${tx('Step-by-step guide with timers, an ingredient checklist and calendar reminders.')}</span>`}</div>`;
   if (!pl.bakeAt) {
     const steps = scheduleSteps(out);
     const total = steps.reduce((a, [, h]) => a + h, 0);
@@ -506,7 +525,7 @@ document.addEventListener('pointercancel', stopHold);
 const pageTitle = v => ({
   settings: t('Settings'), tools: t('Tools'), sourdough: t('Sourdough lab'), glossary: t('Glossary'), about: t('About'),
   open: t('Saved recipes'), library: t('Recipe library'), shared: t('Share'), help: t('How to use'),
-  log: t('Bake log'), 'log-edit': t('Log a bake'), 'log-detail': t('Bake'),
+  log: t('Bake log'), 'log-edit': t('Log a bake'), 'log-detail': t('Bake'), bake: t('Bake mode'),
 }[v] || '');
 
 function renderChrome() {
@@ -516,7 +535,7 @@ function renderChrome() {
   $('#btn-log').setAttribute('aria-label', t('Bake log'));
   $('#btn-menu').innerHTML = ICON.menu;
   $('#btn-menu').setAttribute('aria-label', t('Menu'));
-  $('#menu').innerHTML = `
+  $('#menu').innerHTML = `${state.session ? `<button data-go="bake"><b>${tx('Bake in progress')}</b></button><hr>` : ''}
     <button data-go="log">${tx('Bake log')}</button>
     <button data-go="library">${tx('Recipe library')}</button>
     <button data-go="open">${tx('Saved recipes')} <span class="badge">${savedList().length}</span></button>
@@ -570,6 +589,7 @@ const PAGES = {
     ${toggleRow('poolish', t('Poolish'), t('Liquid pre-ferment. Turns biga off.'))}
     <div class="row"><label for="set-waste">${tx('Wastage')}</label><select id="set-waste" data-setting="wastage">${[0, 1, 2, 3, 4, 5, 7, 10].map(n => `<option value="${n}" ${S().wastage == n ? 'selected' : ''}>${n}%</option>`).join('')}</select></div>
     <div class="row"><label for="set-oven">${tx('Pizza oven')}<small>${tx('Sets the stone temperature, bake time and tips for Neapolitan and Contemporary.')} ${(OVENS[S().oven] || OVENS.gas).hint ? tx(OVENS[S().oven].hint) : ''}</small></label><select id="set-oven" data-setting="oven">${Object.entries(OVENS).map(([k, o]) => `<option value="${k}" ${S().oven === k ? 'selected' : ''}>${tx(o.name)}</option>`).join('')}</select></div>
+    <div class="row"><label for="set-mixer">${tx('Mixing')}<small>${tx('Used to work out the water temperature.')}</small></label><select id="set-mixer" data-setting="mixer">${Object.keys(MIXERS).map(k => `<option value="${k}" ${S().mixer === k ? 'selected' : ''}>${tx(MIXER_NAMES[k])}</option>`).join('')}</select></div>
     ${toggleRow('keepAwake', t('Keep screen on'))}
     <div class="row"><span>${tx('Temperature')}</span><div class="seg small">${['C', 'F'].map(u => `<button data-unit="${u}" aria-pressed="${S().unit === u}">°${u}</button>`).join('')}</div></div>
     </div>
@@ -690,8 +710,94 @@ const PAGES = {
       <span class="btns"><button class="btn" data-load="${i}">${tx('Open')}</button><button class="btn danger" data-del="${i}" aria-label="${esc(t('Delete {name}', { name: it.name }))}">${tx('Delete')}</button></span></div>`).join('')}</div>`;
   },
 
+  bake: () => bakePageHTML(),
+
   shared: () => `<p>${tx('Copy this text to share the recipe:')}</p><textarea id="share-text" rows="10" aria-label="${tx('Recipe to share')}"></textarea>`,
 };
+
+// ---------- Guided bake mode ----------
+function startBake() {
+  const out = computeDough(calcInput(), S());
+  const steps = scheduleSteps(out).map(([label, hours, bake]) => ({ label, hours, bake: !!bake }));
+  const total = steps.reduce((a, s) => a + s.hours, 0) * 3600e3;
+  const pl = PL();
+  const start = pl.bakeAt && pl.bakeAt - total > Date.now() ? pl.bakeAt - total : Date.now();
+  state.session = {
+    id: newId(), style: state.style, created: Date.now(),
+    steps: timeSteps(steps, start), checks: {},
+    rows: ingredientRows(out, R(), ST()).map(x => ({ name: t(x.name), g: grams(x.g) })),
+    pre: out.preferment ? prefermentLine(out.preferment) : null,
+    water: tempStr(Math.max(0, waterNeeded(out))), ddt: tempStr(R().ddt ?? 23),
+  };
+  persist(); scheduleNotifications();
+}
+
+function bakePageHTML() {
+  const ss = state.session;
+  if (!ss) return `<p class="note">${tx('No bake in progress. Start one from the Bake planner on the calculator.')}</p>`;
+  const now = Date.now();
+  const cur = currentStep(ss.steps);
+  const step = ss.steps[cur];
+  let hero;
+  if (cur === -1) {
+    hero = `<section class="hero bm-hero"><p class="eyebrow">${tx(STYLES[ss.style]?.name || '')}</p><p class="total"><span>${tx('Done')}</span></p>
+      <p>${tx('Enjoy your bake! Log it now so you can compare next time.')}</p>
+      <div class="actions"><button class="btn primary" data-act="log-new">${tx('Log this bake')}</button><button class="btn" data-act="bake-end">${tx('End bake')}</button></div></section>`;
+  } else {
+    const waiting = cur === 0 && now < step.start;
+    const target = waiting ? step.start : step.start + step.hours * 3600e3;
+    hero = `<section class="hero bm-hero"><p class="eyebrow">${tx(STYLES[ss.style]?.name || '')} · ${esc(t('Step {n} of {total}', { n: cur + 1, total: ss.steps.length }))}</p>
+      <h2 class="bm-step">${esc(waiting ? t('Next: {step}', { step: step.label }) : step.label)}</h2>
+      ${step.bake && !waiting ? `<p class="bm-sub">${tx('Bake now. Tap Done when it is out of the oven.')}</p>` : `<p class="bm-sub">${esc(waiting ? t('Starts at {when}', { when: fmtWhen(new Date(step.start)) }) : t('Until {when}', { when: fmtWhen(new Date(target)) }))}</p>
+      <p class="total"><span id="bm-count" data-target="${target}">${countdown(target, now)}</span></p>`}
+      <div class="actions">${waiting ? `<button class="btn primary" data-act="bake-now">${tx('Start now')}</button>`
+        : `<button class="btn primary" data-act="bake-next">${step.bake ? tx('Done') : tx('Done, next step')}</button>`}</div></section>`;
+  }
+  const list = `<ol class="timeline timed bm-list">${ss.steps.map((s, i) => `<li class="${s.done ? 'done' : i === cur ? 'now' : ''}${!s.done && atNight(new Date(s.start)) && !s.bake ? ' night' : ''}">
+      <span class="when">${fmtWhen(new Date(s.start))}</span><span>${s.done ? '✓ ' : ''}${esc(s.label)}${s.hours ? ` <span class="muted">${fmtHours(s.hours)}</span>` : ''}</span></li>`).join('')}</ol>`;
+  const checks = `<ul class="checklist">${ss.rows.map((x, i) => `<li><label><input type="checkbox" data-check="${i}" ${ss.checks[i] ? 'checked' : ''}><span>${esc(x.name)}</span><b>${esc(x.g)}</b></label></li>`).join('')}</ul>
+    <p class="note">${esc(t('Use water at {w} to reach {t} dough.', { w: ss.water, t: ss.ddt }))}${ss.pre ? ` ${esc(ss.pre)}` : ''}</p>`;
+  return `${hero}
+    <section class="card"><h3>${tx('Steps')}</h3>${list}
+      <div class="btns"><button class="btn" data-act="bake-ics">${tx('Add to calendar')}</button><button class="btn" data-act="bake-notify">${tx('Remind me while the app is open')}</button></div>
+      <p class="note">${tx('The calendar reminds you at each step even when Prozimi is closed. Tapping Done re-times the steps after it.')}</p></section>
+    <section class="card"><h3>${tx('Ingredients checklist')}</h3>${checks}</section>
+    <p><button class="btn danger" data-act="bake-end">${tx('End bake')}</button></p>`;
+}
+
+function downloadIcs() {
+  const ss = state.session; if (!ss) return;
+  const ics = buildIcs(ss.steps, { title: `Prozimi · ${t(STYLES[ss.style]?.name || '')}`, uid: ss.id });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([ics], { type: 'text/calendar' }));
+  a.download = 'prozimi-bake.ics';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  toast(t('Calendar file ready: open it to add the steps'));
+}
+
+// Best-effort reminders while the app is open (browsers cannot run timers once a web app is closed).
+let noteTimers = [];
+function scheduleNotifications() {
+  noteTimers.forEach(clearTimeout); noteTimers = [];
+  const ss = state.session;
+  if (!ss || !('Notification' in window) || Notification.permission !== 'granted') return;
+  const now = Date.now();
+  ss.steps.forEach(s => {
+    if (s.done || s.start <= now || s.start - now > 2 ** 31 - 1) return;
+    noteTimers.push(setTimeout(() => {
+      const body = s.label;
+      navigator.serviceWorker?.ready.then(r => r.showNotification('Prozimi', { body, tag: `prozimi-${s.start}` })).catch(() => new Notification('Prozimi', { body }));
+    }, s.start - now));
+  });
+}
+setInterval(() => {
+  const el = document.getElementById('bm-count');
+  if (!el) return;
+  const target = Number(el.dataset.target);
+  el.textContent = countdown(target, Date.now());
+  el.classList.toggle('late', Date.now() > target);
+}, 1000);
 
 // ---------- Recipe import ----------
 function importPreviewHTML() {
@@ -947,7 +1053,7 @@ async function share() {
 }
 
 // ---------- Events ----------
-function go(v) { view = v; $('#menu').hidden = true; $('#btn-menu').setAttribute('aria-expanded', 'false'); render(); window.scrollTo(0, 0); }
+function go(v) { view = v; applyWakeLock(); $('#menu').hidden = true; $('#btn-menu').setAttribute('aria-expanded', 'false'); render(); window.scrollTo(0, 0); }
 
 document.addEventListener('click', async e => {
   const el = e.target.closest('button, a');
@@ -994,6 +1100,16 @@ document.addEventListener('click', async e => {
   else if (act === 'share') share();
   else if (act === 'import-read') { const text = $('#imp-text').value; imported = { text, result: parseRecipe(text), style: $('#imp-style')?.value || state.style }; render(); }
   else if (act === 'import-apply') applyImport();
+  else if (act === 'bake-start') { startBake(); go('bake'); }
+  else if (act === 'bake-now') { const ss = state.session; ss.steps = timeSteps(ss.steps, Date.now()); persist(); scheduleNotifications(); render(); }
+  else if (act === 'bake-next') { const ss = state.session; const i = currentStep(ss.steps); if (i >= 0) { ss.steps = completeStep(ss.steps, i, Date.now()); persist(); scheduleNotifications(); render(); } }
+  else if (act === 'bake-ics') downloadIcs();
+  else if (act === 'bake-notify') {
+    if (!('Notification' in window)) { toast(t('This browser cannot show notifications. Use Add to calendar instead.')); return; }
+    const p = await Notification.requestPermission();
+    if (p === 'granted') { scheduleNotifications(); toast(t('You will be reminded at each step while Prozimi is open')); }
+    else toast(t('Notifications are blocked. Use Add to calendar instead.'));
+  }
   else if (act === 'clear-method') { Object.assign(R(), { method: null, source: null, recipeName: null, templateId: null }); persist(); renderResults(); }
   else if (act === 'start-now') { PL().startAt = null; persist(); renderResults(); }
   else if (act === 'log-new') { logDraft = newBakeFromCurrent(); logId = null; go('log-edit'); }
@@ -1003,6 +1119,9 @@ document.addEventListener('click', async e => {
   else if (act === 'bake-use') {
     const b = await getBake(logId);
     if (b && applyRecipe(b.style, b.recipe, b.settings)) { go('calc'); toast(t('Loaded the recipe from “{name}”', { name: b.name })); }
+  } else if (act === 'bake-end') {
+    if (!el.dataset.armed) { const label = el.textContent; el.dataset.armed = '1'; el.textContent = t('Tap again to end the bake'); setTimeout(() => { if (el.isConnected) { delete el.dataset.armed; el.textContent = label; } }, 4000); return; }
+    state.session = null; persist(); scheduleNotifications(); go('calc'); toast(t('Bake ended'));
   } else if (act === 'bake-delete' || act === 'reset') {
     if (!el.dataset.armed) {
       const label = el.textContent; el.dataset.armed = '1';
@@ -1054,6 +1173,7 @@ document.addEventListener('change', async e => {
   if (el.id === 'bake-at') { PL().bakeAt = el.value ? new Date(el.value).getTime() : null; persist(); renderResults(); return; }
   if (el.id === 'plan-start') { PL().startAt = el.value ? new Date(el.value).getTime() : null; persist(); renderResults(); return; }
   if (el.id === 'find-style') { findStyle = el.value; render(); return; }
+  if (el.dataset.check != null && state.session) { state.session.checks[el.dataset.check] = el.checked; persist(); return; }
   if (el.id === 'imp-style' && imported) { imported.style = el.value; return; }
   if (el.id === 'lg-photo' && el.files[0]) {
     try {
@@ -1075,7 +1195,7 @@ document.addEventListener('change', async e => {
   }
   if (el.dataset.setting) {
     const k = el.dataset.setting;
-    S()[k] = el.type === 'checkbox' ? el.checked : (k === 'oven' || k === 'lang' ? el.value : Number(el.value));
+    S()[k] = el.type === 'checkbox' ? el.checked : (k === 'oven' || k === 'lang' || k === 'mixer' ? el.value : Number(el.value));
     if (k === 'lang') { setLang(el.value); persist(); render(); return; }
     if (k === 'oven') {
       const o = OVENS[el.value];
@@ -1108,6 +1228,7 @@ if (params.get('r')) {
 }
 render();
 applyWakeLock();
+scheduleNotifications();
 
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {
   navigator.serviceWorker.register('sw.js').catch(() => {});

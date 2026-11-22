@@ -24,7 +24,7 @@ for (const m of src.matchAll(/\bt[x]?\(\s*(['"])((?:\\.|(?!\1).)*)\1/g)) add(JSO
 for (const k of ['Flour', 'Water', 'Salt', 'Fat', 'Sugar', 'Old dough', 'Poolish (all)', 'Biga (all)', 'Levain ({v}%)', 'Yeast · {type}',
   'Oil / fat', 'Fresh yeast', 'Active dry yeast', 'Instant dry yeast', 'Levain', 'Imported recipe', 'Room temp rise', 'Fat / oil',
   'Storage is full. The bake was saved without its photo.', 'That file is not an image this browser can read.', 'poolish', 'biga', 'none',
-  'Flour 1', 'Flour 2', 'Flour 3']) add(k);
+  'Flour 1', 'Flour 2', 'Flour 3', 'by hand', 'stand mixer', 'spiral mixer']) add(k);
 
 // 2. Data modules.
 for (const st of Object.values(STYLES)) { ['name', 'piece', 'weight', 'rt1', 'rt2', 'fatLabel', 'about'].forEach(f => add(st[f])); st.traits.forEach(add); }

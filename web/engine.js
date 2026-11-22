@@ -22,26 +22,51 @@ function hydrationTerm(h) {
   return 4.2 * H - 80 - 0.0305 * H * H;
 }
 
-// Time spent cold, converted to equivalent hours at room temperature.
+// ---------- Temperature model ----------
+// How fast yeast ferments at T °C, relative to 20 °C, from the cardinal temperature model
+// with inflection (Rosso et al., 1993) using typical baker's-yeast cardinal temperatures:
+// no activity at 0 °C, fastest at 32 °C, none above 45 °C. 4 °C ≈ 0.055 (about 18× slower
+// than 20 °C), 26 °C ≈ 1.39. See docs/formulas.md.
+export const CARDINAL = { Tmin: 0, Topt: 32, Tmax: 45 };
+function ctmi(T, { Tmin, Topt, Tmax } = CARDINAL) {
+  if (T <= Tmin || T >= Tmax) return 0;
+  return ((T - Tmax) * (T - Tmin) ** 2) /
+    ((Topt - Tmin) * ((Topt - Tmin) * (T - Topt) - (Topt - Tmax) * (Topt + Tmin - 2 * T)));
+}
+const CTMI_20 = ctmi(20);
+export const yeastRate = T => ctmi(T) / CTMI_20;
+
+/** Fermentation progress of a list of stages [{ hours, temp }], in "hours at 20 °C". */
+export const fermentationUnits = stages => stages.reduce((a, s) => a + Math.max(0, s.hours || 0) * yeastRate(s.temp), 0);
+
+// Time spent at `temp`, expressed as hours at `roomTemp`.
 export function equivalentHours(hours, temp, roomTemp) {
-  if (hours <= 0 || temp <= 0) return 0;
-  return hours * Math.pow(temp / Math.max(roomTemp, 1), 2.5 / 1.2);
+  if (hours <= 0) return 0;
+  const room = yeastRate(roomTemp);
+  return room > 0 ? hours * yeastRate(temp) / room : 0;
 }
 
-// Fresh-yeast (CY) percentage of flour for a fermentation of `hours` at `temp`.
-export function freshYeastPct({ hydration, salt, fat = 0, hours, temp }) {
-  const T = clamp(temp, 5, 40);
-  const h = Math.max(hours, 1);
-  const pct = (K_YEAST * (1 + salt / 200) * (1 + fat / 300)) /
-    (hydrationTerm(hydration) * Math.pow(T, 2.5) * Math.pow(h, 1.2));
+// Reference point: 60% water, 3% salt, 8 h at 20 °C needs 0.497% fresh yeast (0.76 g in a 250 g ball).
+const REF_PCT = (K_YEAST * (1 + 3 / 200)) / (hydrationTerm(60) * Math.pow(20, 2.5) * Math.pow(8, 1.2));
+
+/**
+ * Fresh-yeast (CY) % of flour for a fermentation. Pass `units` (hours at 20 °C, from
+ * fermentationUnits) or `hours` at a single `temp`. More time or warmth means less yeast;
+ * yeast scales with units^-1.2. Salt, fat and hydration adjust it slightly.
+ */
+export function freshYeastPct({ hydration, salt, fat = 0, hours, temp, units }) {
+  const P = Math.max(units ?? hours * yeastRate(clamp(temp, 1, 40)), 0.5);
+  const pct = REF_PCT * (hydrationTerm(60) / hydrationTerm(hydration)) *
+    ((1 + salt / 200) / (1 + 3 / 200)) * (1 + fat / 300) * Math.pow(8 / P, 1.2);
   return clamp(pct, 0.005, 5);
 }
 
-// Inverse of freshYeastPct: hours of RT fermentation a given CY % supports.
+// Inverse of freshYeastPct: hours at `temp` that a given CY % supports.
 export function hoursForYeast({ hydration, salt, fat = 0, cyPct, temp }) {
-  const T = clamp(temp, 5, 40);
-  const x = (K_YEAST * (1 + salt / 200) * (1 + fat / 300)) / (hydrationTerm(hydration) * Math.pow(T, 2.5) * cyPct);
-  return Math.pow(x, 1 / 1.2);
+  const base = freshYeastPct({ hydration, salt, fat, units: 8 });
+  const units = 8 * Math.pow(base / cyPct, 1 / 1.2);
+  const rate = yeastRate(clamp(temp, 1, 40));
+  return rate > 0 ? units / rate : Infinity;
 }
 
 // Poolish yeast (% CY of poolish flour) for a poolish matured `hours` at ~18–20 °C.
@@ -49,9 +74,18 @@ export function poolishYeastPct(hours) {
   return clamp(1.5 * Math.pow(3 / Math.max(hours, 1), 1.95), 0.03, 3);
 }
 
+/** The fermentation stages of a recipe, each at its own temperature. */
+export function fermentationStages(r, s) {
+  const stages = [{ hours: r.rt1Hours, temp: r.rtTemp }];
+  if (s.ct || r.forceCold) stages.push({ hours: r.ctHours, temp: r.ctTemp });
+  if (r.rt2Hours) stages.push({ hours: r.rt2Hours, temp: r.rt2Temp ?? r.rtTemp });
+  return stages;
+}
+
+/** Fermentation expressed as hours at the recipe's room temperature. */
 export function fermentationHours(r, s) {
-  const cold = (s.ct || r.forceCold) ? equivalentHours(r.ctHours, r.ctTemp, r.rtTemp) : 0;
-  return r.rt1Hours + (r.rt2Hours || 0) + cold;
+  const rate = yeastRate(r.rtTemp);
+  return rate > 0 ? fermentationUnits(fermentationStages(r, s)) / rate : 0;
 }
 
 /** Compute every ingredient for a recipe `r` under settings `s`. */
@@ -64,7 +98,8 @@ export function computeDough(r, s) {
   const lv = LEAVENERS[r.yeastType] || LEAVENERS.CY;
 
   const hours = fermentationHours(r, s);
-  const cyPct = freshYeastPct({ hydration: r.hydration, salt: r.salt, fat: ft * 100, hours, temp: r.rtTemp });
+  const units = fermentationUnits(fermentationStages(r, s));
+  const cyPct = freshYeastPct({ hydration: r.hydration, salt: r.salt, fat: ft * 100, units });
   const cy = cyPct / 100;
 
   const pieces = r.balls * r.ballWeight + (s.twoSizes ? r.balls2 * r.ballWeight2 : 0);
