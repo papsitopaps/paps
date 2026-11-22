@@ -108,4 +108,9 @@ It warns when that differs from your schedule by more than 2.5×.
 | Pan dough | area × thickness factor (g/cm²) |
 | Water temperature | `3·DDT − room − flour − friction`. With a levain it becomes `4·DDT − room − flour − friction − levain`. Mixer friction is 1 °C by hand, 6 °C for a stand mixer and 11 °C for a spiral mixer. The result appears in the recipe for each style's target dough temperature. |
 
+## 10. Flour database and starters
+
+- **Strength (W):** the middle of the published range. When a flour has no published W, it is estimated from protein: `W ≈ 25 · protein% − 40`. The blend W and water range are averages weighted by each flour's share, with W rounded to 10.
+- **Starter status:** from the last feeding, the time to peak uses the levain formula in section 8. Within 1 h of peak it is *at peak*, up to 8 h later *past peak*, after that *hungry*.
+
 All sourdough and pre-ferment numbers are starting points. Flour, starter strength and kitchen conditions vary.

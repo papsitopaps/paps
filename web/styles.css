@@ -413,3 +413,14 @@ label.row { cursor: pointer; }
 .checklist input { width: 20px; height: 20px; accent-color: var(--accent); }
 .checklist input:checked + span, .checklist input:checked ~ b { text-decoration: line-through; color: var(--muted); }
 .bm-list + .btns { margin-top: 12px; }
+
+/* Flours & starters */
+.flour-pick select { width: 100%; }
+.flour-pick .hint { margin: 2px 0 0; }
+.flour-select { width: 100%; padding: 4px 6px; border: 0; background: var(--surface-2); border-radius: 8px; font-size: .78rem; color: var(--ink); }
+.warn-text { color: var(--mid); }
+.chip-s { display: inline-block; padding: 1px 8px; border-radius: 99px; font-size: .72rem; font-weight: 700; background: var(--surface-2); margin-left: 4px; }
+.st-peak { background: color-mix(in srgb, var(--good) 20%, transparent); color: var(--good); }
+.st-rising { color: var(--mid); }
+.st-past, .st-hungry { color: var(--low); }
+.starter-row .btns { flex-wrap: wrap; }
