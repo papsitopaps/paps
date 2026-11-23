@@ -424,3 +424,31 @@ label.row { cursor: pointer; }
 .st-rising { color: var(--mid); }
 .st-past, .st-hungry { color: var(--low); }
 .starter-row .btns { flex-wrap: wrap; }
+
+/* Flour blend: 2 or 3 flours in one row, 4 as two rows of two */
+.tile.flour-grid { display: grid; gap: 8px; padding: 0; background: none; border: 0; }
+.flour-grid.n2, .flour-grid.n4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.flour-grid.n3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.flour-card { display: flex; flex-direction: column; gap: 6px; min-width: 0; padding: 10px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+.flour-card:focus-within { border-color: color-mix(in srgb, var(--accent) 55%, var(--line)); }
+.fc-num { font-size: .7rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+.flour-card .flour-select { min-width: 0; text-overflow: ellipsis; }
+.fc-row { display: flex; align-items: center; justify-content: space-between; gap: 4px; }
+.fc-row .val { width: 100%; min-width: 0; text-align: center; font-size: 1.25rem; }
+.fc-step { flex: none; touch-action: manipulation; width: 30px; height: 30px; border-radius: 50%; border: 0; background: var(--surface-2); color: var(--ink); display: grid; place-items: center; cursor: pointer; }
+.fc-step svg { width: 14px; height: 14px; }
+.fc-bar { height: 4px; border-radius: 2px; background: var(--surface-2); overflow: hidden; }
+.fc-bar > span { display: block; height: 100%; width: var(--w); background: var(--accent); border-radius: 2px; transition: width .2s; }
+@media (max-width: 520px) {
+  .flour-grid.n3 { gap: 6px; }
+  .flour-grid.n3 .flour-card { padding: 8px 6px; gap: 5px; }
+  .flour-grid.n3 .fc-step { width: 24px; height: 24px; }
+  .flour-grid.n3 .fc-step svg { width: 12px; height: 12px; }
+  .flour-grid.n3 .fc-row .val { font-size: 1rem; }
+  .flour-grid.n3 .flour-select { font-size: .72rem; padding: 4px; }
+}
+.fc-step:hover { background: color-mix(in srgb, var(--accent) 14%, var(--surface-2)); }
+.fc-step:active { transform: scale(.92); }
+.g-sub { display: block; margin-top: 3px; font: 500 .72rem/1 var(--font-body, inherit); color: var(--muted); letter-spacing: 0; }
+.checklist .g-sub, td .g-sub { display: inline; margin: 0 0 0 6px; }
+.ingredients .g-sub { color: var(--hero-muted); }

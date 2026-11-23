@@ -6,7 +6,7 @@ export const BASE = {
   hydration: 60, salt: 3, fat: 3, sugar: 1,
   rt1Hours: 8, rt2Hours: 0, ctHours: 24, ctTemp: 4, rtTemp: 20,
   yeastType: 'CY', starterHydration: 100, levainManual: false, levainPct: 20,
-  flours: [{ name: 'Flour 1', pct: 100 }, { name: 'Flour 2', pct: 0 }, { name: 'Flour 3', pct: 0 }],
+  flours: [{ name: 'Flour 1', pct: 100 }, { name: 'Flour 2', pct: 0 }, { name: 'Flour 3', pct: 0 }, { name: 'Flour 4', pct: 0 }],
   bigaPct: 50, bigaHydration: 45, bigaYeastPct: null, bigaHours: 18, bigaTemp: 18, poolishPct: 30, poolishHours: 12,
   yeastManual: false, yeastPct: 0.3, method: null, source: null, recipeName: null, templateId: null,
   oldDoughIn: 10, oldDoughOut: 10,
@@ -104,7 +104,7 @@ export const OVENS = {
 export const DEFAULT_SETTINGS = {
   twoSizes: false, floursCount: 1, fats: false, sugar: false, ct: false,
   oldDoughIn: false, oldDoughOut: false, biga: false, poolish: false,
-  wastage: 0, keepAwake: false, unit: 'C', theme: 'auto', oven: 'gas', lang: null, mixer: 'hand',
+  wastage: 0, keepAwake: false, unit: 'C', weightUnit: 'g', theme: 'auto', oven: 'gas', lang: null, mixer: 'hand',
 };
 
 /**
@@ -129,7 +129,10 @@ export function rebalanceFlours(flours, n, i, value) {
 }
 
 /** Make an n-flour blend add up to 100% (used when the number of flours changes). */
+export const MAX_FLOURS = 4;
 export function normalizeFlours(flours, n) {
+  flours = [...flours];
+  while (flours.length < MAX_FLOURS) flours.push({ name: `Flour ${flours.length + 1}`, pct: 0 });
   const sum = flours.slice(0, n).reduce((a, f) => a + (Number(f.pct) || 0), 0);
   if (Math.abs(sum - 100) < 0.01) return flours.map(f => ({ ...f }));
   return rebalanceFlours(flours, n, 0, n === 1 ? 100 : Math.min(100, Number(flours[0].pct) || 100));

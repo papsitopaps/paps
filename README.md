@@ -16,10 +16,11 @@ How the numbers are worked out is in [`docs/formulas.md`](docs/formulas.md) and 
 
 - **Styles:** Neapolitan, Contemporary (canotto), Detroit, Roman pan, Focaccia, Baguette and Sourdough loaf. Each has a short description and its main characteristics at the top, plus its own defaults and fermentation stages.
 - **Pizza and pan size:** the ball weight shows the pizza diameter it makes (in cm and inches), or the pan size it fills for Detroit, Roman pan and focaccia. One-tap buttons set the weight for common sizes (e.g. 30 cm / 12″, or a 25 × 35 cm / 10 × 14″ Detroit pan).
-- **Amounts:** pieces × weight, two piece sizes, wastage, and a blend of up to 3 flours that always adds up to 100%.
+- **Amounts:** pieces × weight, two piece sizes, wastage, and a blend of up to 4 flours that always adds up to 100% (2 or 3 flours side by side, 4 as a 2 × 2 grid).
+- **Units:** grams, ounces or cups. In cups mode, flour, water, salt, dry yeast, oil, sugar and levain are shown in cups, tablespoons and teaspoons, with the weight underneath. Small amounts such as yeast are also shown in grams. Recipes are always stored in grams.
 - **Ingredients:** water, salt, oil/fat, sugar/malt.
 - **Fermentation:** room temperature, fridge and after-fridge stages, each at its own temperature. The yeast amount follows a temperature model of baker's yeast (see [`docs/formulas.md`](docs/formulas.md)).
-- **Flour library:** pick each flour from a list of common types (00, Type 0/1, Manitoba, bread, T65, wholemeal, semola, rye) and well-known brands, or add your own. Prozimi fills in the strength (W) and shows the usual water range for the blend.
+- **Flour library:** pick each flour from a list of common types (00, Type 0/1, Manitoba, bread, T65, wholemeal, semola, rye) and brands (Caputo Pizzeria, Saccorosso, Nuvola, Nuvola Super and Manitoba Oro; Molino Pasini; Le 5 Stagioni; Dallagiovanna; King Arthur), or add your own. Prozimi fills in the strength (W) and shows the usual water range for the blend.
 - **Starter profiles:** save your starters (hydration, feeding ratio, flour), log each feeding and see when it peaks, whether it is ready, or hungry. The peak can be added to your calendar, and the sourdough lab uses the chosen starter.
 - **Leaveners:** fresh, active dry and instant yeast, plus firm and liquid sourdough with adjustable starter hydration.
   - Levain can be set automatically or by hand, and then shows the hours it supports.
@@ -35,7 +36,7 @@ How the numbers are worked out is in [`docs/formulas.md`](docs/formulas.md) and 
 - **Leoparding coach:** scores Neapolitan and Contemporary recipes and bake setups for leopard spotting, lists the biggest fixes, and adds technique tips. See [`docs/leoparding.md`](docs/leoparding.md).
 - **Hydration advisor:** suggests a hydration from your oven temperature, kitchen temperature, flour strength and fermentation time, starting from the AVPN guideline.
 - **Bake log:** saves each bake with its exact recipe, process, notes, ratings, the oven temperature you actually used and a photo. Search past bakes, load one back into the calculator, or export and import them as JSON for backup.
-- **Find and import recipes:** search Ooni, Gozney, Reddit, 50 Top Pizza, Instagram and YouTube for the current style, then paste any recipe with gram weights (in English, Italian, Spanish, Greek or Japanese) to load it into the calculator.
+- **Find and import recipes:** search Ooni, Gozney, Reddit, 50 Top Pizza, Instagram and YouTube for the current style, then paste any recipe with grams, ounces, pounds, cups or spoons (in English, Italian, Spanish, Greek or Japanese) to load it into the calculator.
 - **Languages:** English, Greek, Spanish and Japanese, picked from the device language and changeable in Settings.
 - **Display:** light/dark/automatic switch in the top bar, °C/°F, keep screen on, glossary.
 
