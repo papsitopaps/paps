@@ -51,39 +51,66 @@ function tx(mode, fn) {
     t.onerror = () => reject(t.error);
   }));
 }
+// Errors carry a message the app shows (translated) and `saved` when the bake was still stored.
+const fail = (msg, saved = false) => Object.assign(new Error(msg), { saved });
+const dbOrNull = () => openDb().catch(() => null);
 const lsRead = () => { try { return JSON.parse(localStorage.getItem(LS_KEY)) || []; } catch { return []; } };
 const lsWrite = list => { try { localStorage.setItem(LS_KEY, JSON.stringify(list)); return true; } catch { return false; } };
 
+// The database is used whenever it opens; localStorage only when it can't (e.g. some private modes).
+// Bakes that older versions put in localStorage are still listed.
 export async function listBakes() {
-  try {
-    const all = await tx('readonly', s => s.getAll());
-    return all.sort((a, b) => b.bakedAt - a.bakedAt);
-  } catch { return lsRead().sort((a, b) => b.bakedAt - a.bakedAt); }
+  const db = await dbOrNull();
+  let all = lsRead();
+  if (db) {
+    try { const idb = await tx('readonly', s => s.getAll()); const ids = new Set(idb.map(b => b.id)); all = [...idb, ...all.filter(b => !ids.has(b.id))]; }
+    catch { /* fall back to what localStorage has */ }
+  }
+  return all.sort((a, b) => b.bakedAt - a.bakedAt);
 }
 
 export async function getBake(id) {
-  try { return await tx('readonly', s => s.get(id)); }
-  catch { return lsRead().find(b => b.id === id); }
+  const db = await dbOrNull();
+  if (db) { try { const b = await tx('readonly', s => s.get(id)); if (b) return b; } catch {} }
+  return lsRead().find(b => b.id === id);
 }
 
+const FULL = 'Not enough storage to save this bake. Remove the photo, or export your bakes and delete old ones.';
 export async function putBake(bake) {
   bake.updatedAt = Date.now();
-  try { await tx('readwrite', s => s.put(bake)); }
-  catch {
-    const list = lsRead().filter(b => b.id !== bake.id); list.push(bake);
-    if (!lsWrite(list)) { delete bake.photo; lsWrite(list); throw new Error('Storage is full. The bake was saved without its photo.'); }
+  if (await dbOrNull()) {
+    try { await tx('readwrite', s => s.put(bake)); }
+    catch (e) { throw fail(e?.name === 'QuotaExceededError' ? FULL : 'The bake could not be saved. Try again, or export your bakes as a backup.'); }
+    const old = lsRead(); if (old.some(b => b.id === bake.id)) lsWrite(old.filter(b => b.id !== bake.id));
+    return bake;
   }
-  return bake;
+  const list = lsRead().filter(b => b.id !== bake.id);
+  if (lsWrite([...list, bake])) return bake;
+  if (bake.photo) {
+    const { photo, ...rest } = bake;
+    if (lsWrite([...list, rest])) { delete bake.photo; throw fail('Storage is full, so the bake was saved without its photo.', true); }
+  }
+  throw fail('Storage is full, so the bake was not saved. Export your bakes and delete old ones to make room.');
 }
 
 export async function deleteBake(id) {
-  try { await tx('readwrite', s => s.delete(id)); }
-  catch { lsWrite(lsRead().filter(b => b.id !== id)); }
+  if (await dbOrNull()) { try { await tx('readwrite', s => s.delete(id)); } catch {} }
+  const old = lsRead(); if (old.some(b => b.id === id)) lsWrite(old.filter(b => b.id !== id));
 }
 
+/** Import bakes from a backup. Photos must be image data. On a save error the error carries `imported`. */
 export async function importBakes(list) {
   let n = 0;
-  for (const b of list) { if (b && b.id && b.recipe) { await putBake(b); n++; } }
+  for (const b of list) {
+    if (!b || typeof b.id !== 'string' || !b.recipe || typeof b.recipe !== 'object') continue;
+    if (typeof b.photo !== 'string' || !b.photo.startsWith('data:image/')) delete b.photo;
+    if (!b.settings || typeof b.settings !== 'object') b.settings = {};
+    if (!b.summary || typeof b.summary !== 'object' || !Array.isArray(b.summary.rows)) b.summary = { dough: Number(b.summary?.dough) || 0, rows: [] };
+    if (typeof b.name !== 'string') b.name = 'Bake';
+    if (!Number.isFinite(b.bakedAt)) b.bakedAt = Date.now();
+    try { await putBake(b); } catch (e) { if (!e.saved) { e.imported = n; throw e; } }
+    n++;
+  }
   return n;
 }
 
