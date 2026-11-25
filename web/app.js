@@ -52,9 +52,16 @@ let imported = null;   // last parsed recipe on the library page
 let findStyle = null;  // style chosen for online search
 
 function load() { try { return JSON.parse(localStorage.getItem(STORE_KEY)); } catch { return null; } }
-function persist() { try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch {} }
+// Tell the user once if this device can't store data, instead of losing changes silently.
+let storageWarned = false;
+function storageFailed() {
+  if (storageWarned) return;
+  storageWarned = true;
+  setTimeout(() => toast(t("Prozimi can't save on this device (storage is full or private browsing is on). Changes will be lost when you close the app.")), 0);
+}
+function persist() { try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch { storageFailed(); } }
 function savedList() { try { return JSON.parse(localStorage.getItem(SAVED_KEY)) || []; } catch { return []; } }
-function setSaved(list) { try { localStorage.setItem(SAVED_KEY, JSON.stringify(list)); } catch {} }
+function setSaved(list) { try { localStorage.setItem(SAVED_KEY, JSON.stringify(list)); return true; } catch { storageFailed(); return false; } }
 
 const S = () => state.settings;
 const R = () => state.recipes[state.style];
@@ -142,7 +149,7 @@ const ICON = {
 
 function toast(msg) {
   const el = $('#toast'); el.textContent = msg; el.classList.add('show');
-  clearTimeout(toast._t); toast._t = setTimeout(() => el.classList.remove('show'), 2400);
+  clearTimeout(toast._t); toast._t = setTimeout(() => el.classList.remove('show'), Math.max(2400, msg.length * 60));
 }
 
 const THEMES = ['auto', 'light', 'dark'];
@@ -602,25 +609,39 @@ function toLocalInput(d) {
 // ---------- Value changes ----------
 function findDef(key) { return fieldDefs().find(d => d.key === key); }
 
-function setValue(key, displayValue) {
+/** A limit (stored units) as the user sees it, e.g. "40%", "34°", "0.35 oz". */
+function limitText(d, v) {
+  if (d.temp) return d.fmt(Math.round(toDisp(v)));
+  if (d.weight && !metric()) return d.fmt(round(toOz(v), 2));
+  return d.fmt(v);
+}
+function setValue(key, displayValue, quiet = false) {
   const d = findDef(key); if (!d) return;
-  let v = Number(String(displayValue).replace(',', '.').replace(/[^\d.\-]/g, ''));
-  if (!Number.isFinite(v)) v = valueOf(d);
-  if (d.temp) v = Math.min(d.max, Math.max(d.min, fromDisp(v)));
-  else if (d.weight) v = Math.min(d.max, Math.max(d.min, metric() ? Math.round(v) : round(fromOz(v), 1)));
-  else v = Math.min(d.max, Math.max(d.min, v));
+  const input = document.getElementById(`f-${key}`);
+  const text = String(displayValue).replace(',', '.').replace(/[^\d.\-]/g, '');
+  let v = Number(text);
+  if (text === '' || text === '-' || !Number.isFinite(v)) {
+    // Keep the old value rather than jumping to the minimum.
+    if (input) input.value = d.fmt(valueOf(d));
+    if (!quiet) toast(t('Enter a number for {label} ({min} to {max}).', { label: d.label, min: limitText(d, d.min), max: limitText(d, d.max) }));
+    return;
+  }
+  if (d.temp) v = fromDisp(v);
+  else if (d.weight) v = metric() ? Math.round(v) : round(fromOz(v), 1);
+  const clamped = Math.min(d.max, Math.max(d.min, v));
+  if (clamped !== v && !quiet) toast(t('{label} can be {min} to {max}, so it was set to {v}.', { label: d.label, min: limitText(d, d.min), max: limitText(d, d.max), v: limitText(d, clamped) }));
+  v = clamped;
   R()[key] = round(v, 2);
   persist();
-  const input = document.getElementById(`f-${key}`);
   if (input) input.value = d.fmt(valueOf(d));
   refreshRanges();
   renderResults();
 }
 function bump(key, dir) {
   const d = findDef(key); if (!d) return;
-  if (d.temp) { const c = R()[key] + dir * (S().unit === 'F' ? 5 / 9 : 1) * (key === 'ovenTemp' ? 5 : 1); setValue(key, toDisp(c)); }
-  else if (d.weight && !metric()) setValue(key, round((Math.round(valueOf(d) * 4) + dir) / 4, 2)); // ¼ oz steps
-  else setValue(key, valueOf(d) + dir * d.step);
+  if (d.temp) { const c = R()[key] + dir * (S().unit === 'F' ? 5 / 9 : 1) * (key === 'ovenTemp' ? 5 : 1); setValue(key, toDisp(c), true); }
+  else if (d.weight && !metric()) setValue(key, round((Math.round(valueOf(d) * 4) + dir) / 4, 2), true); // ¼ oz steps
+  else setValue(key, valueOf(d) + dir * d.step, true);
 }
 function setFlour(i, pct) {
   R().flours = rebalanceFlours(R().flours, S().floursCount, i, pct);
@@ -929,6 +950,15 @@ function downloadIcs() {
 
 // Best-effort reminders while the app is open (browsers cannot run timers once a web app is closed).
 let noteTimers = [];
+// Show a reminder through the service worker when there is one, else directly.
+// (Some mobile browsers only allow the service-worker way; then the calendar export is the backup.)
+async function showReminder(body, tag) {
+  try {
+    const reg = await navigator.serviceWorker?.getRegistration();
+    if (reg) { await reg.showNotification('Prozimi', { body, tag }); return; }
+  } catch {}
+  try { new Notification('Prozimi', { body, tag }); } catch {}
+}
 function scheduleNotifications() {
   noteTimers.forEach(clearTimeout); noteTimers = [];
   const ss = state.session;
@@ -937,8 +967,7 @@ function scheduleNotifications() {
   ss.steps.forEach(s => {
     if (s.done || s.start <= now || s.start - now > 2 ** 31 - 1) return;
     noteTimers.push(setTimeout(() => {
-      const body = s.label;
-      navigator.serviceWorker?.ready.then(r => r.showNotification('Prozimi', { body, tag: `prozimi-${s.start}` })).catch(() => new Notification('Prozimi', { body }));
+      showReminder(s.label, `prozimi-${s.start}`);
     }, s.start - now));
   });
 }
@@ -1015,7 +1044,7 @@ const stars = (name, value, label) => `<fieldset class="stars"><legend>${esc(lab
 const starText = n => n ? '★'.repeat(n) + '☆'.repeat(5 - n) : '';
 
 function recipeFacts(b) {
-  const r = b.recipe, s = b.settings, st = STYLES[b.style] || {};
+  const r = b.recipe, s = { ...DEFAULT_SETTINGS, ...(b.settings || {}) }, st = STYLES[b.style] || {};
   const lv = LEAVENERS[r.yeastType] || LEAVENERS.CY;
   const cold = !!(st.forceCold || s.ct);
   const at = (h, c) => t('{h} at {t}', { h: fmtHours(h), t: tempStr(c) });
@@ -1076,7 +1105,7 @@ const LOG_PAGES = {
       <div class="list pad"><label for="lg-notes" class="label">${tx('Notes')}</label>
         <textarea id="lg-notes" rows="5" placeholder="${tx('Flour brand, how the dough felt, oven behaviour, what you would change…')}">${esc(b.notes)}</textarea></div>
       <div class="list pad"><span class="label">${tx('Photo')}</span>
-        ${b.photo ? `<img class="photo" src="${b.photo}" alt="${tx('Photo of this bake')}">` : ''}
+        ${b.photo ? `<img class="photo" src="${esc(b.photo)}" alt="${tx('Photo of this bake')}">` : ''}
         <div class="btns"><label class="btn" for="lg-photo">${b.photo ? tx('Replace photo') : tx('Add photo')}</label>${b.photo ? `<button type="button" class="btn danger" data-act="photo-remove">${tx('Remove')}</button>` : ''}</div>
         <input type="file" id="lg-photo" accept="image/*" hidden></div>
       <h3>${tx('Recipe saved with this bake')}</h3>${factsHTML(b)}
@@ -1128,7 +1157,10 @@ async function saveLogForm() {
   b.leopardRating = Number(document.querySelector('input[name="lg-leopard"]:checked')?.value || 0);
   b.notes = $('#lg-notes').value;
   try { await putBake(b); toast(t('Bake saved')); }
-  catch (e) { toast(t(e.message)); }
+  catch (e) {
+    toast(t(e.message));
+    if (!e.saved) return; // stay on the form so nothing typed is lost
+  }
   logId = b.id; logDraft = null; view = 'log-detail'; render(); window.scrollTo(0, 0);
 }
 
@@ -1176,13 +1208,40 @@ function encodeRecipe() {
   const payload = { v: 1, style: state.style, r: R(), s: S() };
   return btoa(unescape(encodeURIComponent(JSON.stringify(payload)))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
+/**
+ * Copy only the fields of `src` that match the type of the same field in `base`
+ * (numbers must be finite), so a damaged link or file can't break the app.
+ */
+function cleanInto(base, src) {
+  const out = structuredClone(base);
+  if (!src || typeof src !== 'object') return out;
+  for (const [k, v] of Object.entries(src)) {
+    const b = base[k];
+    if (typeof v === 'number' && !Number.isFinite(v)) continue;
+    if (b === undefined || b === null) {
+      // Fields without a default (e.g. a library recipe's method): plain values or a list of text.
+      if (v === null || ['number', 'string', 'boolean'].includes(typeof v)) out[k] = v;
+      else if (Array.isArray(v) && v.every(x => typeof x === 'string')) out[k] = [...v];
+      continue;
+    }
+    if (Array.isArray(b)) { if (Array.isArray(v)) out[k] = structuredClone(v); continue; }
+    if (typeof v === typeof b) out[k] = typeof v === 'object' ? structuredClone(v) : v;
+  }
+  return out;
+}
 function applyRecipe(style, r, s) {
-  if (!STYLES[style]) return false;
-  state.style = style;
-  state.recipes[style] = { ...freshRecipe(style), ...structuredClone(r) };
-  const keep = { theme: S().theme, keepAwake: S().keepAwake, unit: S().unit, lang: S().lang, oven: S().oven };
-  state.settings = { ...DEFAULT_SETTINGS, ...structuredClone(s), ...keep };
-  state.recipes[style].flours = normalizeFlours(state.recipes[style].flours, state.settings.floursCount);
+  if (!STYLES[style] || !r || typeof r !== 'object') return false;
+  const recipe = cleanInto(freshRecipe(style), r);
+  recipe.flours = (Array.isArray(recipe.flours) ? recipe.flours : []).filter(f => f && typeof f === 'object')
+    .map((f, i) => ({ name: typeof f.name === 'string' ? f.name : `Flour ${i + 1}`, pct: Number.isFinite(Number(f.pct)) ? Number(f.pct) : 0 }));
+  if (!recipe.flours.length) recipe.flours = structuredClone(BASE.flours);
+  recipe.flourIds = recipe.flourIds.map(x => (typeof x === 'string' ? x : null));
+  // Display and equipment choices stay the user's own.
+  const keep = { theme: S().theme, keepAwake: S().keepAwake, unit: S().unit, weightUnit: S().weightUnit, lang: S().lang, oven: S().oven, mixer: S().mixer };
+  const settings = { ...cleanInto(DEFAULT_SETTINGS, s), ...keep };
+  settings.floursCount = Math.min(4, Math.max(1, Math.round(settings.floursCount) || 1));
+  recipe.flours = normalizeFlours(recipe.flours, settings.floursCount);
+  state.style = style; state.recipes[style] = recipe; state.settings = settings;
   persist(); return true;
 }
 function decodeRecipe(str) {
@@ -1242,7 +1301,12 @@ document.addEventListener('click', async e => {
     toast(t('Weight set to {g}', { g: pieceW(R().ballWeight) })); return;
   }
   if (el.dataset.sethyd) { setValue('hydration', el.dataset.sethyd); toast(t('Water set to {v}%', { v: el.dataset.sethyd })); return; }
-  if (el.dataset.load != null) { const it = savedList()[+el.dataset.load]; if (it && decodeRecipe(it.data)) { go('calc'); toast(t('Opened “{name}”', { name: it.name })); } return; }
+  if (el.dataset.load != null) {
+    const it = savedList()[+el.dataset.load];
+    if (it && decodeRecipe(it.data)) { go('calc'); toast(t('Opened “{name}”', { name: it.name })); }
+    else toast(t('This saved recipe is damaged and could not be opened.'));
+    return;
+  }
   if (el.dataset.del != null) { const l = savedList(); const [it] = l.splice(+el.dataset.del, 1); setSaved(l); render(); toast(t('Deleted “{name}”', { name: it.name })); return; }
   if (el.dataset.template) {
     const tpl = LIBRARY.find(x => x.id === el.dataset.template); if (!tpl) return;
@@ -1358,7 +1422,12 @@ document.addEventListener('submit', async e => {
 document.addEventListener('change', async e => {
   const el = e.target;
   if (el.matches('input.val[data-key]')) { setValue(el.dataset.key, el.value); return; }
-  if (el.matches('input.val[data-flour]')) { setFlour(+el.dataset.flour, Number(el.value.replace(',', '.').replace(/[^\d.]/g, '')) || 0); return; }
+  if (el.matches('input.val[data-flour]')) {
+    const text = el.value.replace(',', '.').replace(/[^\d.]/g, '');
+    const v = Number(text);
+    if (text === '' || !Number.isFinite(v)) { el.value = `${R().flours[+el.dataset.flour].pct}%`; toast(t('Enter a percentage from 0 to 100.')); return; }
+    setFlour(+el.dataset.flour, v); return;
+  }
   if (el.dataset.flourPick != null) { pickFlour(+el.dataset.flourPick, el.value); return; }
   if (el.dataset.starterPick != null) {
     const stp = state.starters.find(x => x.id === el.value);
@@ -1383,11 +1452,16 @@ document.addEventListener('change', async e => {
     return;
   }
   if (el.id === 'log-import' && el.files[0]) {
+    let data;
+    try { data = JSON.parse(await el.files[0].text()); }
+    catch { toast(t('That file is not a Prozimi export. Pick the .json file made by Export bakes.')); el.value = ''; return; }
     try {
-      const data = JSON.parse(await el.files[0].text());
-      const n = await importBakes(Array.isArray(data) ? data : data.bakes || []);
+      const n = await importBakes(Array.isArray(data) ? data : data?.bakes || []);
       toast(n ? t('Bakes imported: {n}', { n }) : t('No bakes found in that file')); render();
-    } catch { toast(t('That file is not a Prozimi export.')); }
+    } catch (e) {
+      toast(t('Imported {n} bakes, then stopped: {reason}', { n: e.imported || 0, reason: t(e.message) })); render();
+    }
+    el.value = '';
     return;
   }
   if (el.dataset.setting) {
@@ -1420,7 +1494,8 @@ document.addEventListener('input', e => {
 // ---------- Boot ----------
 const params = new URLSearchParams(location.search);
 if (params.get('r')) {
-  if (decodeRecipe(params.get('r'))) setTimeout(() => toast(t('Shared recipe loaded')), 300);
+  const ok = decodeRecipe(params.get('r'));
+  setTimeout(() => toast(ok ? t('Shared recipe loaded') : t('This recipe link is damaged or incomplete. Ask for the link again.')), 300);
   history.replaceState(null, '', location.pathname);
 }
 render();
